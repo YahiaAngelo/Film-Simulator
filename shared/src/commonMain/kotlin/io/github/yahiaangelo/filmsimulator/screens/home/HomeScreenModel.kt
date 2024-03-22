@@ -41,6 +41,7 @@ data class HomeUiState(
     val lut: FilmLut? = null,
     val filmLutsList: List<FilmLut> = emptyList(),
     val isLoading: Boolean = false,
+    val loadingMessage: String = "",
     val userMessage: String? = null,
     val showBottomSheet: Boolean = false
 )
@@ -56,6 +57,7 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
     private val _filmLut: MutableStateFlow<FilmLut?> = MutableStateFlow(null)
     private val _userMessage: MutableStateFlow<String?> = MutableStateFlow(null)
     private val _isLoading = MutableStateFlow(false)
+    private val _loadingMessage: MutableStateFlow<String> = MutableStateFlow("")
     private val _showBottomSheet = MutableStateFlow(false)
     @OptIn(ExperimentalCoroutinesApi::class)
     private val _filmLutsList = repository.getFilmsStream()
@@ -63,6 +65,7 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
             if (filmList.isEmpty()) {
                 // If the list is empty, attempt to download new Film Luts and then retry fetching the list
                 flow<Async<List<FilmLut>>> {
+                    _loadingMessage.emit("Updating Luts List")
                     emit(Async.Loading)
                     try {
                         repository.downloadFilmLuts() // Download new Film Luts.
@@ -81,12 +84,12 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
 
 
     val uiState: StateFlow<HomeUiState> = combine(
-        _image, _filmLut, _userMessage, _isLoading, _showBottomSheet, _filmLutsList
-    ) { image, filmLut, userMessage, isLoading, showBottomSheet, filmLutsList ->
+        _image, _filmLut, _userMessage, _isLoading, _loadingMessage, _showBottomSheet, _filmLutsList
+    ) { image, filmLut, userMessage, isLoading, loadingMessage, showBottomSheet, filmLutsList ->
 
         when (filmLutsList) {
             Async.Loading -> {
-                HomeUiState(isLoading = true)
+                HomeUiState(isLoading = true, loadingMessage = loadingMessage)
             }
 
             is Async.Error -> {
@@ -122,6 +125,7 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
     fun selectFilmLut(filmLut: FilmLut) {
         screenModelScope.launch {
             _originalImage.value?.let {
+                _loadingMessage.emit("Applying Film Lut")
                 _isLoading.emit(true)
                 repository.applyFilmLut(scope = screenModelScope, filmLut = filmLut, imageBitmap = it) {
                     screenModelScope.launch {

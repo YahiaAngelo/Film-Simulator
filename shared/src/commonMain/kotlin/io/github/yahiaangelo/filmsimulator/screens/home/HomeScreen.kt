@@ -102,6 +102,7 @@ data class HomeScreen(
                loading = uiState.isLoading,
                imageBitmap = uiState.image,
                selectedFilm = uiState.lut,
+               loadingMessage = uiState.loadingMessage,
                onRefresh = vm::refresh,
                onImageChooseClick = { singleImagePicker.launch() },
                onFilmBoxClick = vm::showFilmLutsBottomSheet,
@@ -126,13 +127,14 @@ data class HomeScreen(
         loading: Boolean,
         imageBitmap: ImageBitmap?,
         selectedFilm : FilmLut?,
+        loadingMessage: String,
         onRefresh: () -> Unit,
         onImageChooseClick: () -> Unit,
         onFilmBoxClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
 
-        if (loading) ProgressDialog()
+        if (loading) ProgressDialog(loadingMessage = loadingMessage)
 
         Column(modifier = modifier) {
 
