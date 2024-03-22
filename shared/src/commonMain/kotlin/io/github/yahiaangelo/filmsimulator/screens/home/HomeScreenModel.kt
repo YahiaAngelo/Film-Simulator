@@ -121,7 +121,7 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
 
     fun selectFilmLut(filmLut: FilmLut) {
         screenModelScope.launch {
-            _image.value?.let {
+            _originalImage.value?.let {
                 _isLoading.emit(true)
                 repository.applyFilmLut(scope = screenModelScope, filmLut = filmLut, imageBitmap = it) {
                     screenModelScope.launch {
