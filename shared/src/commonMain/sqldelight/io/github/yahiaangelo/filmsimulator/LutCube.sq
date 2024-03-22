@@ -1,0 +1,27 @@
+CREATE TABLE LutCube (
+name TEXT PRIMARY KEY NOT NULL,
+file BLOB NOT NULL
+);
+
+CREATE INDEX lutCube_name ON LutCube(name);
+
+
+selectAllLutCubes:
+SELECT *
+FROM LutCube;
+
+selectByName:
+SELECT *
+FROM LutCube
+WHERE name = ?;
+
+insertLutCube:
+INSERT INTO LutCube(name, file)
+VALUES (?, ?);
+
+insertLutCubeObject:
+INSERT INTO LutCube(name, file)
+VALUES ?;
+
+removeAllLutCubes:
+DELETE FROM LutCube;

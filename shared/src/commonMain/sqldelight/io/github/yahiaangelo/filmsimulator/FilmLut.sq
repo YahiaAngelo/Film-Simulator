@@ -1,0 +1,29 @@
+CREATE TABLE filmLut (
+name TEXT NOT NULL,
+category TEXT NOT NULL,
+image_url TEXT NOT NULL,
+lut_name TEXT NOT NULL
+);
+
+CREATE INDEX filmLut_name ON filmLut(name);
+
+
+selectAllFilmLuts:
+SELECT *
+FROM filmLut;
+
+selectByName:
+SELECT *
+FROM filmLut
+WHERE name = ?;
+
+insertFilmLut:
+INSERT INTO filmLut(name, category, image_url, lut_name)
+VALUES (?, ?, ?, ?);
+
+insertFilmLutObject:
+INSERT INTO filmLut(name, category, image_url, lut_name)
+VALUES ?;
+
+removeAllFilmLuts:
+DELETE FROM filmLut;
