@@ -10,10 +10,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,12 +38,17 @@ fun AppScaffold(
     onImageResetClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onImageExportClick: () -> Unit,
+    snackbarHostState: SnackbarHostState,
     content: @Composable (innerPadding: PaddingValues) -> Unit,
 
 ) {
     var showOriginalImage by remember { mutableStateOf(false) }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+        snackbarHost = {
+                       SnackbarHost(hostState = snackbarHostState)
+        },
         topBar = {
             CenterAlignedTopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(

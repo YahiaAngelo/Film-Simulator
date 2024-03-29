@@ -188,7 +188,15 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
 
     fun exportImage() {
         _editedImage.value?.let {
-            screenModelScope.launch { saveImageToGallery(it, appContext = AppContext) }
+            screenModelScope.launch {
+                _loadingMessage.emit("Exporting...")
+                _isLoading.emit(true)
+                saveImageToGallery(it, appContext = AppContext)
+                _isLoading.emit(false)
+                _userMessage.emit("Image has been exported successfully")
+            }
+        } ?: screenModelScope.launch {
+            _userMessage.emit("Please choose an image first.")
         }
     }
 }

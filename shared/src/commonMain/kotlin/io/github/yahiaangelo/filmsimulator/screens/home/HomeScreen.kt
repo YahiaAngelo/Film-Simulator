@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -77,6 +78,8 @@ data class HomeScreen(
         val scaffoldState = rememberScaffoldState()
         val sheetState = rememberModalBottomSheetState()
         val navigator = LocalNavigator.currentOrThrow
+        val snackbarHostState = remember { SnackbarHostState() }
+
 
         val vm = getScreenModel<HomeScreenModel>()
         val uiState by vm.uiState.collectAsState()
@@ -95,14 +98,13 @@ data class HomeScreen(
             onImageChooseClick = { singleImagePicker.launch() },
             onImageResetClick = vm::resetImage,
             onSettingsClick = { navigator.push(SettingsScreen()) },
-            onImageExportClick = vm::exportImage
+            onImageExportClick = vm::exportImage,
+            snackbarHostState = snackbarHostState
             ) { innerPadding ->
 
            HomeContent(
-               loading = uiState.isLoading,
                imageBitmap = uiState.image,
                selectedFilm = uiState.lut,
-               loadingMessage = uiState.loadingMessage,
                onRefresh = vm::refresh,
                onImageChooseClick = { singleImagePicker.launch() },
                onFilmBoxClick = vm::showFilmLutsBottomSheet,
@@ -112,29 +114,30 @@ data class HomeScreen(
 
         FilmLutsListBottomSheet(sheetState = sheetState, showBottomSheet = uiState.showBottomSheet, filmLuts = uiState.filmLutsList, onDismissRequest = vm::dismissFilmLutBottomSheet, onItemClick = vm::selectFilmLut)
 
-
         uiState.userMessage?.let { message ->
-            LaunchedEffect(scaffoldState, vm, message, message) {
-                scaffoldState.snackbarHostState.showSnackbar(message)
+            LaunchedEffect(scaffoldState, vm, message) {
+                snackbarHostState.showSnackbar(message)
                 vm.snackbarMessageShown()
             }
         }
+
+        uiState.isLoading.let { loading ->
+            if (loading) ProgressDialog(loadingMessage = uiState.loadingMessage)
+        }
+
 
     }
 
     @Composable
     private fun HomeContent(
-        loading: Boolean,
         imageBitmap: ImageBitmap?,
         selectedFilm : FilmLut?,
-        loadingMessage: String,
         onRefresh: () -> Unit,
         onImageChooseClick: () -> Unit,
         onFilmBoxClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
 
-        if (loading) ProgressDialog(loadingMessage = loadingMessage)
 
         Column(modifier = modifier) {
 
