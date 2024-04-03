@@ -1,7 +1,6 @@
 package io.github.yahiaangelo.filmsimulator.data.source
 
 import io.github.yahiaangelo.filmsimulator.data.source.local.SettingsStorage
-import io.github.yahiaangelo.filmsimulator.data.source.local.SettingsStorageImpl
 import org.koin.dsl.bind
 import org.koin.dsl.module
 

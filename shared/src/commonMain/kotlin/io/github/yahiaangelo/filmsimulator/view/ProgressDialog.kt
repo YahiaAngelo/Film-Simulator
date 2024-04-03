@@ -1,7 +1,6 @@
 package io.github.yahiaangelo.filmsimulator.view
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement.Center
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer

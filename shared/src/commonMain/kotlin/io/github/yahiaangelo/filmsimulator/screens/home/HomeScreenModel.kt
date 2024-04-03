@@ -1,12 +1,10 @@
 package screens.home
 
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.preat.peekaboo.image.picker.toImageBitmap
 import io.github.yahiaangelo.filmsimulator.FilmLut
-import io.github.yahiaangelo.filmsimulator.FilmSimulatorConfig
 import io.github.yahiaangelo.filmsimulator.data.source.FilmRepository
 import io.github.yahiaangelo.filmsimulator.util.AppContext
 import io.github.yahiaangelo.filmsimulator.util.Async
@@ -20,9 +18,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEmpty
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.dsl.module

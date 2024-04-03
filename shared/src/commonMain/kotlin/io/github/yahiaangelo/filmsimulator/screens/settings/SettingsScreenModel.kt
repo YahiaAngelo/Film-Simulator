@@ -5,7 +5,6 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import io.github.yahiaangelo.filmsimulator.data.source.SettingsRepository
 import io.github.yahiaangelo.filmsimulator.util.WhileUiSubscribed
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn

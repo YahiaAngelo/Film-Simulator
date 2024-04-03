@@ -1,6 +1,5 @@
 package util
 
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import io.github.yahiaangelo.filmsimulator.util.AppContext
 
