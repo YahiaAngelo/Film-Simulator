@@ -3,6 +3,7 @@ package io.github.yahiaangelo.filmsimulator.util
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asSkiaBitmap
 import com.seiko.imageloader.asImageBitmap
+import io.github.yahiaangelo.filmsimulator.data.source.local.SettingsStorageImpl
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.UByteVar
@@ -116,9 +117,10 @@ private fun ByteArray.toNativeUByteArray(): CPointer<UByteVar> {
 }
 
 actual suspend fun ImageBitmap.readPixels(): ByteArray {
+    val settings = SettingsStorageImpl()
     return withContext(Dispatchers.Main) {
         val bitmap = this@readPixels.asSkiaBitmap()
-        val data = Image.makeFromBitmap(bitmap).encodeToData(format = EncodedImageFormat.JPEG, quality = 100)
+        val data = Image.makeFromBitmap(bitmap).encodeToData(format = EncodedImageFormat.JPEG, quality = settings.exportQuality)
         data!!.bytes
     }
 

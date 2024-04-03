@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import io.github.yahiaangelo.filmsimulator.data.source.local.SettingsStorageImpl
 import io.github.yahiaangelo.filmsimulator.util.AppContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -55,6 +56,7 @@ suspend fun deleteFile(filePath: String) {
 
 actual suspend fun saveImageToGallery(image: ImageBitmap, appContext: AppContext) {
     val context: Context = appContext.get()!!
+    val settings = SettingsStorageImpl()
 
     val contentValues = ContentValues().apply {
         put(MediaStore.MediaColumns.DISPLAY_NAME, "image_${System.currentTimeMillis()}")
@@ -67,7 +69,7 @@ actual suspend fun saveImageToGallery(image: ImageBitmap, appContext: AppContext
     uri?.let {
         resolver.openOutputStream(it).use { outputStream ->
             if (outputStream != null) {
-                image.asAndroidBitmap().compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                image.asAndroidBitmap().compress(Bitmap.CompressFormat.JPEG, settings.exportQuality, outputStream)
             }
         }
     } ?: throw IOException("Failed to create new MediaStore record.")

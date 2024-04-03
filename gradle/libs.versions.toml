@@ -8,6 +8,7 @@ compose-material3 = "1.2.0"
 androidx-activityCompose = "1.8.2"
 logging = "1.4.2"
 materialKolor = "1.4.0-rc03"
+multiplatformSettings = "1.1.1"
 nativeDriver = "2.0.1"
 runtime = "2.0.1"
 statelyCommon = "2.0.5"
@@ -45,6 +46,10 @@ ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "kto
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktorVersion" }
 logging = { module = "org.lighthousegames:logging", version.ref = "logging" }
 material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
+multiplatform-settings = { module = "com.russhwolf:multiplatform-settings", version.ref = "multiplatformSettings" }
+multiplatform-settings-coroutines = { module = "com.russhwolf:multiplatform-settings-coroutines", version.ref = "multiplatformSettings" }
+multiplatform-settings-serialization = { module = "com.russhwolf:multiplatform-settings-serialization", version.ref = "multiplatformSettings" }
+multiplatform-settings-no-arg = { module = "com.russhwolf:multiplatform-settings-no-arg", version.ref = "multiplatformSettings" }
 native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "nativeDriver" }
 runtime = { module = "com.squareup.sqldelight:runtime", version.ref = "runtime" }
 stately-common = { module = "co.touchlab:stately-common", version.ref = "statelyCommon" }

@@ -16,8 +16,6 @@ class AppNavController
     @Composable
     override fun Content() {
 
-        val coroutineScope: CoroutineScope = rememberCoroutineScope()
-        val drawerState: DrawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
         val currentNavigator = LocalNavigator.currentOrThrow
 
         currentNavigator.push(HomeScreen())

@@ -1,6 +1,7 @@
 import androidx.compose.runtime.Composable
 
 import cafe.adriel.voyager.navigator.Navigator
+import cafe.adriel.voyager.transitions.SlideTransition
 import com.example.compose.AppTheme
 import org.koin.compose.KoinContext
 
@@ -8,7 +9,9 @@ import org.koin.compose.KoinContext
 fun App() {
     KoinContext {
         AppTheme {
-            Navigator(AppNavController())
+            Navigator(AppNavController()) {
+                SlideTransition(it)
+            }
         }
     }
 

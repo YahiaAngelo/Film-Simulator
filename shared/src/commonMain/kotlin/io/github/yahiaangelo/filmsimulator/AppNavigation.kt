@@ -5,8 +5,8 @@ import screens.home.HomeScreen
 
 class AppNavigationActions(val navigator: Navigator) {
 
-    fun navigateToMainScreen(userMessage: Int = 0) {
-        val navigatesFromDrawer = userMessage == 0
+    fun navigateToMainScreen(userMessage: String = "") {
+        val navigatesFromDrawer = userMessage == ""
 
         if (navigator.isEmpty)
             navigator.push(HomeScreen(userMessage))

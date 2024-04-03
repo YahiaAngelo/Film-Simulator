@@ -68,7 +68,7 @@ import org.jetbrains.compose.resources.stringResource
 
 
 data class HomeScreen(
-    val userMessage: Int = 0
+    val userMessage: String = ""
 ): Screen {
 
     @OptIn(ExperimentalMaterial3Api::class)

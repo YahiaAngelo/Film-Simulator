@@ -46,7 +46,7 @@ kotlin {
             extraOpts = listOf("-compiler-option", "-fmodules")
         }
     }
-    
+
     sourceSets {
         all {
             languageSettings.optIn("kotlin.experimental.ExperimentalObjCName")
@@ -87,6 +87,10 @@ kotlin {
             implementation(libs.peekaboo.image.picker)
             implementation(libs.okio)
             implementation(libs.coroutines.extensions)
+            implementation(libs.multiplatform.settings)
+            implementation(libs.multiplatform.settings.no.arg)
+            implementation(libs.multiplatform.settings.serialization)
+            implementation(libs.multiplatform.settings.coroutines)
             api(libs.image.loader)
             //api(libs.image.loader.extension.blur)
         }
