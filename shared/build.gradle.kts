@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinCocoapods)
     alias(libs.plugins.androidLibrary)
-    alias(libs.plugins.jetbrainsCompose)
+    alias(libs.plugins.jetbrainsCompose) version "1.6.2"
     id("org.jetbrains.kotlin.plugin.serialization")  version "1.9.22"
     id("app.cash.sqldelight") version "2.0.1"
 }
@@ -102,6 +102,8 @@ kotlin {
             implementation(libs.kotlin.test)
         }
     }
+
+    task("testClasses")
 }
 
 android {
