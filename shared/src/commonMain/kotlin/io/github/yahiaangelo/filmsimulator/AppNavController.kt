@@ -4,8 +4,10 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import screens.home.HomeScreen
 
-class AppNavController
-: Screen {
+/**
+ * App's entry screen and navigation controller
+ */
+class AppNavController : Screen {
 
     @Composable
     override fun Content() {

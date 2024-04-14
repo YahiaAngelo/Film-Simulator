@@ -6,8 +6,14 @@ import androidx.compose.ui.graphics.ImageBitmap
  * Main file for image processing
  */
 
+/**
+ * Add film grain to an image
+ */
 expect suspend fun addGrain(imageBitmap: ImageBitmap, intensity: Int): ImageBitmap
 
+/**
+ * Convert ImageBitmap to a byte array
+ */
 expect suspend fun ImageBitmap.readPixels(): ByteArray
 
 

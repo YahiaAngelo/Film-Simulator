@@ -8,7 +8,10 @@ val appDBModule = module {
     singleOf(::AppDatabase)
     singleOf(::DriverFactory)
 }
+
+/**
+ * Main endpoint for the app's local database
+ */
 internal class AppDatabase(driverFactory: DriverFactory) {
     val database = Database(driverFactory.createDriver())
-
 }

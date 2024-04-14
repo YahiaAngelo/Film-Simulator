@@ -55,9 +55,12 @@ import com.preat.peekaboo.image.picker.rememberImagePickerLauncher
 import com.seiko.imageloader.rememberImagePainter
 
 import film_simulator.shared.generated.resources.Res
+import film_simulator.shared.generated.resources.film
 import film_simulator.shared.generated.resources.ic_image_add_24
+import film_simulator.shared.generated.resources.search
 
 import film_simulator.shared.generated.resources.select_image
+import film_simulator.shared.generated.resources.select_your_film
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
@@ -95,7 +98,7 @@ data class HomeScreen(
 
         AppScaffold(
             onVisibilityClick = vm::showOriginalImage,
-            onImageChooseClick = { singleImagePicker.launch() },
+            onImageChooseClick = singleImagePicker::launch,
             onImageResetClick = vm::resetImage,
             onSettingsClick = { navigator.push(SettingsScreen()) },
             onImageExportClick = vm::exportImage,
@@ -106,7 +109,7 @@ data class HomeScreen(
                imageBitmap = uiState.image,
                selectedFilm = uiState.lut,
                onRefresh = vm::refresh,
-               onImageChooseClick = { singleImagePicker.launch() },
+               onImageChooseClick = singleImagePicker::launch,
                onFilmBoxClick = vm::showFilmLutsBottomSheet,
                modifier = Modifier.padding(innerPadding)
            )
@@ -196,12 +199,12 @@ data class HomeScreen(
             ) {
 
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "Film",
+                    Text(text = stringResource(Res.string.film),
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier.padding(horizontal = 0.dp, vertical = 2.dp)
                     )
 
-                    Text(text = selectedFilm?.name ?: "Select Your Film",
+                    Text(text = selectedFilm?.name ?: stringResource(Res.string.select_your_film),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 0.dp, vertical = 2.dp)
                     )
@@ -248,7 +251,7 @@ data class HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(8.dp),
-                placeholder = { Text("Search") },
+                placeholder = { Text(text = stringResource(Res.string.search)) },
                 leadingIcon = {
                     Icon(Icons.Filled.Search, contentDescription = "Search")
                 },

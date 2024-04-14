@@ -11,7 +11,9 @@ import io.github.yahiaangelo.filmsimulator.data.source.settingsRepoModule
 import io.github.yahiaangelo.filmsimulator.screens.settings.settingsScreenModel
 import screens.home.homeScreenModule
 
-
+/**
+ * DI modules
+ */
 fun appModule() = listOf(
     homeScreenModule,
     httpClientModule,

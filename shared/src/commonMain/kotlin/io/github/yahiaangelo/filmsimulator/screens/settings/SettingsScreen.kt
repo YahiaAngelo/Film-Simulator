@@ -28,6 +28,10 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import film_simulator.shared.generated.resources.Res
+import film_simulator.shared.generated.resources.image_export_quality
+import film_simulator.shared.generated.resources.settings
+import org.jetbrains.compose.resources.stringResource
 
 
 class SettingsScreen : Screen {
@@ -57,7 +61,7 @@ class SettingsScreen : Screen {
                         titleContentColor = MaterialTheme.colorScheme.primary,
                     ),
                     title = {
-                        Text("Settings", color = MaterialTheme.colorScheme.onSurface)
+                        Text(stringResource(Res.string.settings), color = MaterialTheme.colorScheme.onSurface)
                     },
                     navigationIcon = {
                         IconButton(onClick = {
@@ -79,7 +83,7 @@ class SettingsScreen : Screen {
                     .padding(16.dp)
             ) {
                 SettingsSlider(
-                    name = "Image Export Quality",
+                    name = stringResource(Res.string.image_export_quality),
                     value = uiState.exportQuality.toFloat(),
                     steps = 4,
                     range = 25f..100f,

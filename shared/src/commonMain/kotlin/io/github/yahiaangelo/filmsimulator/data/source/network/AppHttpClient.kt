@@ -10,6 +10,9 @@ val httpClientModule = module {
     single { AppHttpClient() }
 }
 
+/**
+ * Main Network Http client
+ */
 class AppHttpClient {
     val httpClient = HttpClient {
         install(ContentNegotiation) {

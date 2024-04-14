@@ -9,6 +9,10 @@ import org.koin.dsl.module
 val settingsStorageImplModule = module {
     single { SettingsStorageImpl() } bind SettingsStorage::class
 }
+
+/**
+ * Key-Value [SettingsStorage] implementation for App's settings
+ */
 class SettingsStorageImpl : SettingsStorage {
 
     private val settings: Settings by lazy { Settings() }
