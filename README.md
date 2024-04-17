@@ -34,7 +34,7 @@ The app follows the MVVM (Model-View-ViewModel) architecture and makes use of Ko
 ### Building the Project
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/FilmSimulator.git
+   git clone https://github.com/YahiaAngelo/Film-Simulator.git
 2. Open the project in Android Studio.
 3. To run the Android app, select the 'androidApp' module in the configuration dropdown and hit 'Run'.
 4. To run the iOS app, open the iosApp directory in Xcode and run the project on a simulator or actual device.
