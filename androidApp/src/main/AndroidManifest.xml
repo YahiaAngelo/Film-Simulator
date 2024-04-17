@@ -8,7 +8,9 @@
         android:allowBackup="false"
         android:supportsRtl="true"
         android:requestLegacyExternalStorage="true"
+        android:label="Film Simulator"
         android:name=".MainApplication"
+        android:icon="@mipmap/ic_launcher"
         android:theme="@style/AppTheme">
         <activity
             android:name=".MainActivity"
