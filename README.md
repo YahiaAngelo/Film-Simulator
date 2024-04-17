@@ -13,6 +13,7 @@ This project leverages the following technologies and libraries:
 - **Compose UI**: Used to build the UI components in a declarative style across both platforms.
 - **Material3**: Implements Material Design 3 components for a modern, cohesive look and feel.
 - **Compose Resources**: Helps manage resources in a multiplatform environment.
+- **FFMPEG-Kit**: Used to apply Lut files to images.
 - **Ktor**: Utilized for network operations.
 - **Voyager Navigation**: Manages navigation in the app.
 - **Koin DI**: Provides dependency injection to manage object creation.
@@ -23,6 +24,9 @@ This project leverages the following technologies and libraries:
 
 ## Architecture
 The app follows the MVVM (Model-View-ViewModel) architecture and makes use of Kotlin flows for reactive data handling, which helps in managing the UI state reactively across both Android and iOS platforms.
+
+## LUTs Acknowledgment
+The Film LUTs used in this app are sourced from a public repository and are not owned by FilmSimulator. You can find them at [YahiaAngelo/Film-Luts](https://github.com/YahiaAngelo/Film-Luts) on GitHub.
 
 ## Getting Started
 
