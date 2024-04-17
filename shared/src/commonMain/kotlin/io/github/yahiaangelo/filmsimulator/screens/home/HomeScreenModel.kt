@@ -178,6 +178,7 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
             _originalImage.value?.let {
                 _image.emit(it)
             }
+            _filmLut.emit(null)
         }
     }
 
