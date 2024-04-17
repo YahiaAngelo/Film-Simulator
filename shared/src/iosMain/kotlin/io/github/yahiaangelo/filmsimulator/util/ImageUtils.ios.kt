@@ -127,7 +127,7 @@ actual suspend fun ImageBitmap.readPixels(): ByteArray {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-fun ByteArray.toUIImage(): UIImage {
+fun ByteArray.toUIImage(): UIImage? {
     val nsData = this.usePinned { pinned ->
         NSData.dataWithBytes(pinned.addressOf(0), this.size.toULong())
     }
