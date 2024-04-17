@@ -50,6 +50,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.preat.peekaboo.image.picker.ResizeOptions
 import com.preat.peekaboo.image.picker.SelectionMode
 import com.preat.peekaboo.image.picker.rememberImagePickerLauncher
 import com.seiko.imageloader.rememberImagePainter
@@ -91,6 +92,12 @@ data class HomeScreen(
         val singleImagePicker = rememberImagePickerLauncher(
             selectionMode = SelectionMode.Single,
             scope = scope,
+            resizeOptions = ResizeOptions(
+                width = 4080,
+                height = 4080,
+                resizeThresholdBytes = 40 * 1024 * 1024L,
+                compressionQuality = 1.0
+            ),
             onResult = vm::onImagePickerResult
         )
 
