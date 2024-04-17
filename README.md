@@ -14,6 +14,7 @@ This project leverages the following technologies and libraries:
 - **Material3**: Implements Material Design 3 components for a modern, cohesive look and feel.
 - **Compose Resources**: Helps manage resources in a multiplatform environment.
 - **FFMPEG-Kit**: Used to apply Lut files to images.
+- **SQLDelight**: Used for local database.
 - **Ktor**: Utilized for network operations.
 - **Voyager Navigation**: Manages navigation in the app.
 - **Koin DI**: Provides dependency injection to manage object creation.
