@@ -149,11 +149,14 @@ data class HomeScreen(
     ) {
 
 
-        Column(modifier = modifier) {
+        Column(modifier = modifier.padding(horizontal = 28.dp)) {
 
             Spacer(modifier = Modifier.size(23.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedCard (modifier = Modifier.align(Alignment.Center).size(360.dp, 360.dp),
+                OutlinedCard (modifier = Modifier.align(Alignment.Center).fillMaxWidth()
+                    .height(
+                    height = 360.dp
+                ),
                     shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface,
@@ -196,7 +199,7 @@ data class HomeScreen(
     private fun FilmLutBox(modifier: Modifier = Modifier, selectedFilm: FilmLut?, onFilmBoxClick: () -> Unit) {
         Box(modifier = modifier) {
             OutlinedCard(
-                modifier = Modifier.align(Alignment.Center).size(360.dp, 80.dp),
+                modifier = Modifier.align(Alignment.Center).fillMaxWidth().height(80.dp),
                 shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface,
