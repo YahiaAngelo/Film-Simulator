@@ -149,7 +149,7 @@ data class HomeScreen(
     ) {
 
 
-        Column(modifier = modifier.padding(horizontal = 28.dp)) {
+        Column(modifier = modifier.padding(horizontal = 18.dp)) {
 
             Spacer(modifier = Modifier.size(23.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
@@ -185,7 +185,7 @@ data class HomeScreen(
             }
             Spacer(modifier = Modifier.size(23.dp))
 
-            Divider(modifier = Modifier.padding(46.dp, 0.dp))
+            Divider(modifier = Modifier.padding(28.dp, 0.dp))
 
             Spacer(modifier = Modifier.size(23.dp))
 
