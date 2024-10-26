@@ -4,6 +4,9 @@
 <img src="https://github.com/YahiaAngelo/Film-Simulator/blob/main/imgs/screenshot1.PNG?raw=true" alt="screenshot1" width="200"/>
 <img src="https://github.com/YahiaAngelo/Film-Simulator/blob/main/imgs/screenshot2.PNG?raw=true" alt="screenshot2" width="200"/>
 </p>
+ <a href="https://apps.apple.com/us/app/film-simulator/id6736855160?itscg=30200&itsct=apps_box_badge&mttnsubad=6736855160" style="display: inline-block;">
+ <img src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us?releaseDate=1728950400" alt="Download on the App Store" style="width: 246px; height: 82px; vertical-align: middle; object-fit: contain;" />
+ </a>
 
 ## Overview
 FilmSimulator is a cross-platform mobile application developed using Kotlin Multiplatform and Compose UI Multiplatform. It is designed for both Android and iOS platforms. The app allows users to apply different film-like LUTs (Look-Up Tables) to their images, providing a unique aesthetic reminiscent of classic film styles.
