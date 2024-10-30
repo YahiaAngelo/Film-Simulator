@@ -161,12 +161,13 @@ data class HomeScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                     ),
-                    border = CardDefaults.outlinedCardBorder()
+                    border = CardDefaults.outlinedCardBorder(),
+                    onClick = onImageChooseClick
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         imageBitmap?.let {
                             Image(modifier = Modifier.fillMaxSize(), bitmap = imageBitmap, contentDescription =  null)
-                        } ?: IconButton(modifier = Modifier.align(Alignment.Center).size(150.dp), onClick = onImageChooseClick) {
+                        } ?: IconButton(modifier = Modifier.align(Alignment.Center).size(150.dp), onClick = onImageChooseClick ) {
                             Column {
                                 Icon(painter = painterResource(Res.drawable.ic_image_add_24),
                                     null,
