@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -45,11 +47,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import com.example.compose.AppTheme
 import com.preat.peekaboo.image.picker.ResizeOptions
 import com.preat.peekaboo.image.picker.SelectionMode
 import com.preat.peekaboo.image.picker.rememberImagePickerLauncher
@@ -232,7 +236,8 @@ data class HomeScreen(
         if (showBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = onDismissRequest,
-                sheetState = sheetState
+                sheetState = sheetState,
+                windowInsets = WindowInsets.ime
             ) {
                 FilmLutsList(filmLuts = filmLuts, onItemClick = onItemClick)
             }
@@ -266,8 +271,9 @@ data class HomeScreen(
                 leadingIcon = {
                     Icon(Icons.Filled.Search, contentDescription = "Search")
                 },
-                singleLine = true
-            )
+                textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface),
+                singleLine = true,
+                )
 
             // List
             LazyColumn {
