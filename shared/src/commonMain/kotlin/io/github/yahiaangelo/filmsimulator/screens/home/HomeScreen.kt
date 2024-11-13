@@ -136,6 +136,7 @@ data class HomeScreen(
         }
 
         uiState.isLoading.let { loading ->
+            print("I got new loading $loading")
             if (loading) ProgressDialog(loadingMessage = uiState.loadingMessage)
         }
 
