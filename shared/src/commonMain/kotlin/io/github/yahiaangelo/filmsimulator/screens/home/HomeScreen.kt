@@ -237,7 +237,7 @@ data class HomeScreen(
             ModalBottomSheet(
                 onDismissRequest = onDismissRequest,
                 sheetState = sheetState,
-                windowInsets = WindowInsets.ime
+                contentWindowInsets = { WindowInsets.ime }
             ) {
                 FilmLutsList(filmLuts = filmLuts, onItemClick = onItemClick)
             }
