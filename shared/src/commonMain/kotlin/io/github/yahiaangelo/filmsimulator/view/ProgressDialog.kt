@@ -36,7 +36,8 @@ fun ProgressDialog(
                 Text(
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                     style = MaterialTheme.typography.titleSmall,
-                    text = loadingMessage
+                    text = loadingMessage,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
