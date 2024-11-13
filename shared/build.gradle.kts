@@ -1,11 +1,13 @@
 import org.jetbrains.compose.ExperimentalComposeLibrary
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinCocoapods)
     alias(libs.plugins.androidLibrary)
-    alias(libs.plugins.jetbrainsCompose) version "1.6.2"
-    id("org.jetbrains.kotlin.plugin.serialization")  version "1.9.22"
+    alias(libs.plugins.jetbrainsCompose) version "1.7.1"
+    alias(libs.plugins.compose.compiler)
+    id("org.jetbrains.kotlin.plugin.serialization")  version "2.0.21"
     id("app.cash.sqldelight") version "2.0.1"
 }
 
@@ -20,11 +22,12 @@ sqldelight {
 
 kotlin {
     androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "1.8"
-            }
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_1_8)
         }
+    }
+    compilerOptions {
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
     }
     iosX64()
     iosArm64()
@@ -97,6 +100,7 @@ kotlin {
 
         nativeMain.dependencies {
             implementation(libs.native.driver)
+            implementation(libs.ktor.client.darwin)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
