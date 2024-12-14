@@ -4,9 +4,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import com.preat.peekaboo.image.picker.toImageBitmap
+import io.github.vinceglb.filekit.core.PlatformFile
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.FilmRepository
 import io.github.yahiaangelo.filmsimulator.util.AppContext
+import io.github.yahiaangelo.filmsimulator.util.fixImageOrientation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,13 +89,15 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
         }
     }
 
-    fun onImagePickerResult(byteArrays: List<ByteArray>) {
-        byteArrays.firstOrNull()?.let {
+    fun onImagePickerResult(file: PlatformFile?) {
+        file?.let {
             screenModelScope.launch {
-                val image = it.toImageBitmap()
+                val fixedImage = it.readBytes().fixImageOrientation()
+                val image = fixedImage.toImageBitmap()
                 _originalImage.emit(image)
                 _editedImage.emit(image)
                 updateUiState { it.copy(image = image) }
+                _uiState.value.lut?.let { selectFilmLut(it) }
             }
         }
     }

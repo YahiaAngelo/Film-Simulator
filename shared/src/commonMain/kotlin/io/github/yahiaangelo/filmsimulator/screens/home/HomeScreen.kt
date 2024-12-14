@@ -53,10 +53,6 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.example.compose.AppTheme
-import com.preat.peekaboo.image.picker.ResizeOptions
-import com.preat.peekaboo.image.picker.SelectionMode
-import com.preat.peekaboo.image.picker.rememberImagePickerLauncher
 import com.seiko.imageloader.rememberImagePainter
 
 import film_simulator.shared.generated.resources.Res
@@ -66,6 +62,9 @@ import film_simulator.shared.generated.resources.search
 
 import film_simulator.shared.generated.resources.select_image
 import film_simulator.shared.generated.resources.select_your_film
+import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.core.PickerMode
+import io.github.vinceglb.filekit.core.PickerType
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
@@ -92,19 +91,7 @@ data class HomeScreen(
         val vm = getScreenModel<HomeScreenModel>()
         val uiState by vm.uiState.collectAsState()
 
-
-        val singleImagePicker = rememberImagePickerLauncher(
-            selectionMode = SelectionMode.Single,
-            scope = scope,
-            resizeOptions = ResizeOptions(
-                width = 4080,
-                height = 4080,
-                resizeThresholdBytes = 40 * 1024 * 1024L,
-                compressionQuality = 1.0
-            ),
-            onResult = vm::onImagePickerResult
-        )
-
+        val singleImagePicker = rememberFilePickerLauncher(mode = PickerMode.Single, type = PickerType.Image, onResult = vm::onImagePickerResult)
 
 
         AppScaffold(
@@ -136,7 +123,6 @@ data class HomeScreen(
         }
 
         uiState.isLoading.let { loading ->
-            print("I got new loading $loading")
             if (loading) ProgressDialog(loadingMessage = uiState.loadingMessage)
         }
 

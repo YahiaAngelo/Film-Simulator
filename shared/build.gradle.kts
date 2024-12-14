@@ -95,6 +95,8 @@ kotlin {
             implementation(libs.multiplatform.settings.serialization)
             implementation(libs.multiplatform.settings.coroutines)
             api(libs.image.loader)
+            implementation(libs.filekit.core)
+            implementation(libs.filekit.compose)
             //api(libs.image.loader.extension.blur)
         }
 

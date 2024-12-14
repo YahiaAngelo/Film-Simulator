@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asSkiaBitmap
 import com.seiko.imageloader.asImageBitmap
 import io.github.yahiaangelo.filmsimulator.data.source.local.SettingsStorageImpl
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.UByteVar
@@ -11,12 +12,12 @@ import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.nativeHeap
+import kotlinx.cinterop.refTo
 import kotlinx.cinterop.set
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
-import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
 import platform.CoreFoundation.CFDataCreate
@@ -24,10 +25,17 @@ import platform.CoreGraphics.CGColorRenderingIntent
 import platform.CoreGraphics.CGColorSpaceCreateDeviceRGB
 import platform.CoreGraphics.CGDataProviderCreateWithCFData
 import platform.CoreGraphics.CGImageCreate
+import platform.CoreGraphics.CGPointMake
 import platform.CoreImage.CIImage
 import platform.Foundation.NSData
 import platform.Foundation.dataWithBytes
+import platform.UIKit.UIGraphicsBeginImageContext
+import platform.UIKit.UIGraphicsEndImageContext
+import platform.UIKit.UIGraphicsGetImageFromCurrentImageContext
 import platform.UIKit.UIImage
+import platform.UIKit.UIImageJPEGRepresentation
+import platform.UIKit.UIImageOrientation
+import platform.posix.memcpy
 import kotlin.random.Random
 
 
@@ -132,4 +140,30 @@ fun ByteArray.toUIImage(): UIImage? {
         NSData.dataWithBytes(pinned.addressOf(0), this.size.toULong())
     }
     return UIImage.imageWithData(nsData)
+}
+
+actual suspend fun ByteArray.fixImageOrientation(): ByteArray {
+    return withContext(Dispatchers.IO) {
+        this@fixImageOrientation.toUIImage()?.fixImageOrientation()?.toByteArray(1.0) ?: this@fixImageOrientation
+    }
+}
+
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+private fun UIImage.fixImageOrientation(): UIImage {
+    if (this.imageOrientation == UIImageOrientation.UIImageOrientationUp) return this
+
+    UIGraphicsBeginImageContext(size = this.size)
+    this.drawAtPoint(CGPointMake(0.0, 0.0))
+    val fixedImage = UIGraphicsGetImageFromCurrentImageContext()
+    UIGraphicsEndImageContext()
+    return fixedImage ?: this
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun UIImage.toByteArray(compressionQuality: Double): ByteArray {
+    val validCompressionQuality = compressionQuality.coerceIn(0.0, 1.0)
+    val jpegData = UIImageJPEGRepresentation(this, validCompressionQuality)!!
+    return ByteArray(jpegData.length.toInt()).apply {
+        memcpy(this.refTo(0), jpegData.bytes, jpegData.length)
+    }
 }
