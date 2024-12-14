@@ -16,4 +16,7 @@ expect suspend fun addGrain(imageBitmap: ImageBitmap, intensity: Int): ImageBitm
  */
 expect suspend fun ImageBitmap.readPixels(): ByteArray
 
-
+/**
+ * Fix image's Exif orientation
+ */
+expect suspend fun ByteArray.fixImageOrientation(): ByteArray

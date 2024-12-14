@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -45,14 +47,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import com.preat.peekaboo.image.picker.ResizeOptions
-import com.preat.peekaboo.image.picker.SelectionMode
-import com.preat.peekaboo.image.picker.rememberImagePickerLauncher
 import com.seiko.imageloader.rememberImagePainter
 
 import film_simulator.shared.generated.resources.Res
@@ -62,6 +62,9 @@ import film_simulator.shared.generated.resources.search
 
 import film_simulator.shared.generated.resources.select_image
 import film_simulator.shared.generated.resources.select_your_film
+import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.core.PickerMode
+import io.github.vinceglb.filekit.core.PickerType
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
@@ -88,19 +91,7 @@ data class HomeScreen(
         val vm = getScreenModel<HomeScreenModel>()
         val uiState by vm.uiState.collectAsState()
 
-
-        val singleImagePicker = rememberImagePickerLauncher(
-            selectionMode = SelectionMode.Single,
-            scope = scope,
-            resizeOptions = ResizeOptions(
-                width = 4080,
-                height = 4080,
-                resizeThresholdBytes = 40 * 1024 * 1024L,
-                compressionQuality = 1.0
-            ),
-            onResult = vm::onImagePickerResult
-        )
-
+        val singleImagePicker = rememberFilePickerLauncher(mode = PickerMode.Single, type = PickerType.Image, onResult = vm::onImagePickerResult)
 
 
         AppScaffold(
@@ -161,12 +152,13 @@ data class HomeScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                     ),
-                    border = CardDefaults.outlinedCardBorder()
+                    border = CardDefaults.outlinedCardBorder(),
+                    onClick = onImageChooseClick
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         imageBitmap?.let {
                             Image(modifier = Modifier.fillMaxSize(), bitmap = imageBitmap, contentDescription =  null)
-                        } ?: IconButton(modifier = Modifier.align(Alignment.Center).size(150.dp), onClick = onImageChooseClick) {
+                        } ?: IconButton(modifier = Modifier.align(Alignment.Center).size(150.dp), onClick = onImageChooseClick ) {
                             Column {
                                 Icon(painter = painterResource(Res.drawable.ic_image_add_24),
                                     null,
@@ -231,7 +223,8 @@ data class HomeScreen(
         if (showBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = onDismissRequest,
-                sheetState = sheetState
+                sheetState = sheetState,
+                contentWindowInsets = { WindowInsets.ime }
             ) {
                 FilmLutsList(filmLuts = filmLuts, onItemClick = onItemClick)
             }
@@ -265,8 +258,9 @@ data class HomeScreen(
                 leadingIcon = {
                     Icon(Icons.Filled.Search, contentDescription = "Search")
                 },
-                singleLine = true
-            )
+                textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface),
+                singleLine = true,
+                )
 
             // List
             LazyColumn {
