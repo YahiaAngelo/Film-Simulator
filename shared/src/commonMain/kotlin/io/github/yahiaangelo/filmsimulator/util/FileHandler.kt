@@ -1,8 +1,9 @@
 package util
 
-import androidx.compose.ui.graphics.ImageBitmap
 import io.github.yahiaangelo.filmsimulator.util.AppContext
 
+const val IMAGE_FILE_NAME = "image.jpeg"
+const val EDITED_IMAGE_FILE_NAME = "image-new.jpeg"
 /**
  * Save an image file to cache
  */
@@ -21,4 +22,4 @@ expect fun saveLutFile(fileName: String, lut: ByteArray)
 /**
  * Export image to gallery
  */
-expect suspend fun saveImageToGallery(image: ByteArray, appContext: AppContext)
+expect suspend fun saveImageToGallery(image: String, appContext: AppContext)

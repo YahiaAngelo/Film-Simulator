@@ -61,6 +61,4 @@ actual suspend fun ImageBitmap.readPixels(): ByteArray {
 
 }
 
-actual suspend fun ByteArray.fixImageOrientation(): ByteArray {
-    return this //Image picker library already fixes it
-}
+actual suspend fun fixImageOrientation(image: String): String = image

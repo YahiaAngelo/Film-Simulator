@@ -48,8 +48,8 @@ suspend fun deleteFile(filePath: String) {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-actual suspend fun saveImageToGallery(image: ByteArray, appContext: AppContext) {
-  val uiImage = image.toUIImage()!!
+actual suspend fun saveImageToGallery(image: String, appContext: AppContext) {
+  val uiImage = readImageFile(image).toUIImage()!!
 
   UIImageWriteToSavedPhotosAlbum(uiImage, null, null, null)
 }

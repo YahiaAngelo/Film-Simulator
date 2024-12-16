@@ -51,7 +51,7 @@ suspend fun deleteFile(filePath: String) {
     }
 }
 
-actual suspend fun saveImageToGallery(image: ByteArray, appContext: AppContext) {
+actual suspend fun saveImageToGallery(image: String, appContext: AppContext) {
     val context: Context = appContext.get()!!
     val settings = SettingsStorageImpl()
 
@@ -66,7 +66,7 @@ actual suspend fun saveImageToGallery(image: ByteArray, appContext: AppContext) 
     uri?.let {
         resolver.openOutputStream(it).use { outputStream ->
             if (outputStream != null) {
-                image.decodeToImageBitmap().asAndroidBitmap().compress(Bitmap.CompressFormat.JPEG, settings.exportQuality, outputStream)
+                readImageFile(image).decodeToImageBitmap().asAndroidBitmap().compress(Bitmap.CompressFormat.JPEG, settings.exportQuality, outputStream)
             }
         }
     } ?: throw IOException("Failed to create new MediaStore record.")
