@@ -36,6 +36,9 @@ import platform.UIKit.UIImage
 import platform.UIKit.UIImageJPEGRepresentation
 import platform.UIKit.UIImageOrientation
 import platform.posix.memcpy
+import util.IMAGE_FILE_NAME
+import util.readImageFile
+import util.saveImageFile
 import kotlin.random.Random
 
 
@@ -142,9 +145,15 @@ fun ByteArray.toUIImage(): UIImage? {
     return UIImage.imageWithData(nsData)
 }
 
-actual suspend fun ByteArray.fixImageOrientation(): ByteArray {
+actual suspend fun fixImageOrientation(image: String): String {
     return withContext(Dispatchers.IO) {
-        this@fixImageOrientation.toUIImage()?.fixImageOrientation()?.toByteArray(1.0) ?: this@fixImageOrientation
+
+        val imageByteArray = readImageFile(IMAGE_FILE_NAME)
+        val fixedImage = imageByteArray.toUIImage()?.fixImageOrientation()?.toByteArray(1.0)
+        fixedImage?.let {
+            saveImageFile(IMAGE_FILE_NAME, it)
+        }
+        image
     }
 }
 

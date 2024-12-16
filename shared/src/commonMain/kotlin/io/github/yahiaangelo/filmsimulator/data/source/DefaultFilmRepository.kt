@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.dsl.bind
 import org.koin.dsl.module
+import util.EDITED_IMAGE_FILE_NAME
 import util.apply3dLut
 import util.readImageFile
 import util.saveImageFile
@@ -86,29 +87,26 @@ internal class DefaultFilmRepository(
     }
 
 
-    override suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, imageBitmap: ImageBitmap, onComplete: (ImageBitmap) -> Unit){
+    override suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, image: String, onComplete: (String) -> Unit){
        var lutCube = getLutCube(filmLut.lut_name)
         if (lutCube == null) {
             downloadLutCube(filmLut.lut_name)
             lutCube = getLutCube(filmLut.lut_name)
         }
 
-        applyLutFile(scope = scope, lutCube = lutCube!!, imageBitmap = imageBitmap) {
+        applyLutFile(scope = scope, lutCube = lutCube!!, image = image) {
             onComplete(it)
         }
     }
 
-    private suspend fun applyLutFile(scope: CoroutineScope, lutCube: LutCube, imageBitmap: ImageBitmap, onComplete: (ImageBitmap) -> Unit) {
+    private suspend fun applyLutFile(scope: CoroutineScope, lutCube: LutCube, image: String, onComplete: (String) -> Unit) {
         withContext(Dispatchers.IO) {
-            val inputFile = "image.jpeg".also { saveImageFile(fileName = it, image = imageBitmap.readPixels()) }
             val lutFile = "lut.cube".also { saveLutFile(fileName = it, lut = lutCube.file_) }
-            val outputFile = "image-new.jpeg"
-            apply3dLut(inputFile = inputFile, lutFile = lutFile, outputFile = outputFile) {
+            //TODO refactor this function to take input and output file names
+            val outputFile = EDITED_IMAGE_FILE_NAME
+            apply3dLut(inputFile = image, lutFile = lutFile, outputFile = outputFile) {
                 scope.launch {
-                    val resultImage = withContext(Dispatchers.IO) {
-                        readImageFile(outputFile)
-                    }
-                    onComplete(resultImage)
+                    onComplete(outputFile)
                 }
             }
         }

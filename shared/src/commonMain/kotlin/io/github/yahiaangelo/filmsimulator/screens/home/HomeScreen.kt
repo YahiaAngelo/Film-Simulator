@@ -45,7 +45,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -53,6 +52,10 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
 import com.seiko.imageloader.rememberImagePainter
 
 import film_simulator.shared.generated.resources.Res
@@ -70,6 +73,7 @@ import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
 import io.github.yahiaangelo.filmsimulator.view.AppScaffold
 import io.github.yahiaangelo.filmsimulator.view.ProgressDialog
+import okio.FileSystem
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -104,7 +108,7 @@ data class HomeScreen(
             ) { innerPadding ->
 
            HomeContent(
-               imageBitmap = uiState.image,
+               image = uiState.image,
                selectedFilm = uiState.lut,
                onRefresh = vm::refresh,
                onImageChooseClick = singleImagePicker::launch,
@@ -131,14 +135,13 @@ data class HomeScreen(
 
     @Composable
     private fun HomeContent(
-        imageBitmap: ImageBitmap?,
+        image: String?,
         selectedFilm : FilmLut?,
         onRefresh: () -> Unit,
         onImageChooseClick: () -> Unit,
         onFilmBoxClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
-
 
         Column(modifier = modifier.padding(horizontal = 18.dp)) {
 
@@ -156,8 +159,17 @@ data class HomeScreen(
                     onClick = onImageChooseClick
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        imageBitmap?.let {
-                            Image(modifier = Modifier.fillMaxSize(), bitmap = imageBitmap, contentDescription =  null)
+                        image?.let {
+                            AsyncImage(
+                                modifier = Modifier.fillMaxSize(), model = ImageRequest.Builder(
+                                    LocalPlatformContext.current
+                                )
+                                    .data("${FileSystem.SYSTEM_TEMPORARY_DIRECTORY}/${image.substringBefore("?")}") // removing the string added after "?" that was used to identify the state
+                                    .memoryCacheKey(image)
+                                    .diskCacheKey(image)
+                                    .diskCachePolicy(CachePolicy.DISABLED)
+                                    .build(), contentDescription = null
+                            )
                         } ?: IconButton(modifier = Modifier.align(Alignment.Center).size(150.dp), onClick = onImageChooseClick ) {
                             Column {
                                 Icon(painter = painterResource(Res.drawable.ic_image_add_24),

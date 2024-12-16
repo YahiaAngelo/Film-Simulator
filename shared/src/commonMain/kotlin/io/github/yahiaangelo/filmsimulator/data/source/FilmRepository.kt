@@ -29,5 +29,5 @@ interface FilmRepository {
 
     suspend fun downloadLutCube(name: String)
 
-    suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, imageBitmap: ImageBitmap, onComplete: (ImageBitmap) -> Unit)
+    suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, image: String, onComplete: (String) -> Unit)
 }

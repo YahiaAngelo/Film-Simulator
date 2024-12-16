@@ -86,8 +86,6 @@ kotlin {
             implementation(libs.koin.test)
             implementation(libs.koin.compose)
             implementation(libs.stately.common)
-            implementation(libs.peekaboo.ui)
-            implementation(libs.peekaboo.image.picker)
             implementation(libs.okio)
             implementation(libs.coroutines.extensions)
             implementation(libs.multiplatform.settings)
@@ -95,8 +93,10 @@ kotlin {
             implementation(libs.multiplatform.settings.serialization)
             implementation(libs.multiplatform.settings.coroutines)
             api(libs.image.loader)
+            implementation(libs.coil.compose)
             implementation(libs.filekit.core)
             implementation(libs.filekit.compose)
+            implementation(libs.kotlinx.datetime)
             //api(libs.image.loader.extension.blur)
         }
 

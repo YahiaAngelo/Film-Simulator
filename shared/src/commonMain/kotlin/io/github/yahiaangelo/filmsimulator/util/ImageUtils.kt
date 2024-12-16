@@ -19,4 +19,4 @@ expect suspend fun ImageBitmap.readPixels(): ByteArray
 /**
  * Fix image's Exif orientation
  */
-expect suspend fun ByteArray.fixImageOrientation(): ByteArray
+expect suspend fun fixImageOrientation(image: String): String
