@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okio.FileSystem
 import okio.Path.Companion.toPath
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import java.io.IOException
 
 val systemTemporaryPath = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
@@ -27,14 +28,14 @@ actual fun saveImageFile(fileName: String, image: ByteArray) {
 
 }
 
-actual suspend fun readImageFile(fileName: String): ImageBitmap {
+actual suspend fun readImageFile(fileName: String): ByteArray {
     val path = "${systemTemporaryPath/fileName}".toPath()
     var imageByteArray = ByteArray(0)
     FileSystem.SYSTEM.read(path) {
         imageByteArray = readByteArray()
     }
 
-    return BitmapFactory.decodeByteArray(imageByteArray, 0, imageByteArray.size).asImageBitmap()
+    return imageByteArray
 }
 
 actual fun saveLutFile(fileName: String, lut: ByteArray) {
@@ -50,7 +51,7 @@ suspend fun deleteFile(filePath: String) {
     }
 }
 
-actual suspend fun saveImageToGallery(image: ImageBitmap, appContext: AppContext) {
+actual suspend fun saveImageToGallery(image: ByteArray, appContext: AppContext) {
     val context: Context = appContext.get()!!
     val settings = SettingsStorageImpl()
 
@@ -65,7 +66,7 @@ actual suspend fun saveImageToGallery(image: ImageBitmap, appContext: AppContext
     uri?.let {
         resolver.openOutputStream(it).use { outputStream ->
             if (outputStream != null) {
-                image.asAndroidBitmap().compress(Bitmap.CompressFormat.JPEG, settings.exportQuality, outputStream)
+                image.decodeToImageBitmap().asAndroidBitmap().compress(Bitmap.CompressFormat.JPEG, settings.exportQuality, outputStream)
             }
         }
     } ?: throw IOException("Failed to create new MediaStore record.")

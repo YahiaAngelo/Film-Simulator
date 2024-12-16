@@ -3,7 +3,6 @@ package screens.home
 import androidx.compose.ui.graphics.ImageBitmap
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import com.preat.peekaboo.image.picker.toImageBitmap
 import io.github.vinceglb.filekit.core.PlatformFile
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.FilmRepository
@@ -27,7 +26,7 @@ val homeScreenModule = module {
  * UiState for the Main Screen
  */
 data class HomeUiState(
-    val image: ImageBitmap? = null,
+    val image: ByteArray? = null,
     val lut: FilmLut? = null,
     val filmLutsList: List<FilmLut> = emptyList(),
     val isLoading: Boolean = false,
@@ -51,8 +50,8 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
         _uiState.value = update(_uiState.value)
     }
 
-    private val _originalImage: MutableStateFlow<ImageBitmap?> = MutableStateFlow(null)
-    private val _editedImage: MutableStateFlow<ImageBitmap?> = MutableStateFlow(null)
+    private val _originalImage: MutableStateFlow<ByteArray?> = MutableStateFlow(null)
+    private val _editedImage: MutableStateFlow<ByteArray?> = MutableStateFlow(null)
 
     fun refresh() {
         screenModelScope.launch {
@@ -75,7 +74,7 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
                 try {
                     updateUiState { it.copy(isLoading = true, loadingMessage = "Applying Film LUT...") }
                     withContext(Dispatchers.IO) {
-                        repository.applyFilmLut(scope = screenModelScope, filmLut = filmLut, imageBitmap = image) {resultImage ->
+                        repository.applyFilmLut(scope = screenModelScope, filmLut = filmLut, image = image) {resultImage ->
                             screenModelScope.launch { _editedImage.emit(resultImage) }
                             updateUiState { it.copy(image = resultImage, lut = filmLut) }
                         }
@@ -93,10 +92,9 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
         file?.let {
             screenModelScope.launch {
                 val fixedImage = it.readBytes().fixImageOrientation()
-                val image = fixedImage.toImageBitmap()
-                _originalImage.emit(image)
-                _editedImage.emit(image)
-                updateUiState { it.copy(image = image) }
+                _originalImage.emit(fixedImage)
+                _editedImage.emit(fixedImage)
+                updateUiState { it.copy(image = fixedImage) }
                 _uiState.value.lut?.let { selectFilmLut(it) }
             }
         }

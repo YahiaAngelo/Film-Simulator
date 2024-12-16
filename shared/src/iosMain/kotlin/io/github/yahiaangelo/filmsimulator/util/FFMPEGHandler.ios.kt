@@ -14,7 +14,7 @@ actual suspend fun apply3dLut(inputFile: String, lutFile: String, outputFile: St
 
     deleteFile(outputFileDir)
     withContext(Dispatchers.IO) {
-        FFmpegKit.executeAsync("-i $inputFileDir -vf lut3d=$lutFileDir -c:a copy $outputFileDir") {
+        FFmpegKit.executeAsync("-i $inputFileDir -vf lut3d=$lutFileDir -q:v 1 $outputFileDir") {
             onComplete()
         }
     }

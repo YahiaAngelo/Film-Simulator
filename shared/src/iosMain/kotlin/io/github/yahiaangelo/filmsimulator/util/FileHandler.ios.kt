@@ -23,12 +23,15 @@ actual fun saveImageFile(fileName: String, image: ByteArray) {
   }
 }
 
-actual suspend fun readImageFile(fileName: String): ImageBitmap {
+actual suspend fun readImageFile(fileName: String): ByteArray {
   val path = "${systemTemporaryPath/fileName}".toPath()
 
-  return Image.makeFromEncoded(FileSystem.SYSTEM.read(path) {
-    readByteArray()
-  }).toComposeImageBitmap()
+  var imageByteArray = ByteArray(0)
+  FileSystem.SYSTEM.read(path) {
+    imageByteArray = readByteArray()
+  }
+
+  return imageByteArray
 }
 
 actual fun saveLutFile(fileName: String, lut: ByteArray) {
@@ -45,8 +48,8 @@ suspend fun deleteFile(filePath: String) {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-actual suspend fun saveImageToGallery(image: ImageBitmap, appContext: AppContext) {
-  val uiImage = image.readPixels().toUIImage()!!
+actual suspend fun saveImageToGallery(image: ByteArray, appContext: AppContext) {
+  val uiImage = image.toUIImage()!!
 
   UIImageWriteToSavedPhotosAlbum(uiImage, null, null, null)
 }

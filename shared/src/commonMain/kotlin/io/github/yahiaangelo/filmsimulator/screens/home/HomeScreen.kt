@@ -53,6 +53,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import coil3.compose.AsyncImage
 import com.seiko.imageloader.rememberImagePainter
 
 import film_simulator.shared.generated.resources.Res
@@ -70,6 +71,7 @@ import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
 import io.github.yahiaangelo.filmsimulator.view.AppScaffold
 import io.github.yahiaangelo.filmsimulator.view.ProgressDialog
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -104,7 +106,7 @@ data class HomeScreen(
             ) { innerPadding ->
 
            HomeContent(
-               imageBitmap = uiState.image,
+               image = uiState.image,
                selectedFilm = uiState.lut,
                onRefresh = vm::refresh,
                onImageChooseClick = singleImagePicker::launch,
@@ -131,7 +133,7 @@ data class HomeScreen(
 
     @Composable
     private fun HomeContent(
-        imageBitmap: ImageBitmap?,
+        image: ByteArray?,
         selectedFilm : FilmLut?,
         onRefresh: () -> Unit,
         onImageChooseClick: () -> Unit,
@@ -156,8 +158,8 @@ data class HomeScreen(
                     onClick = onImageChooseClick
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        imageBitmap?.let {
-                            Image(modifier = Modifier.fillMaxSize(), bitmap = imageBitmap, contentDescription =  null)
+                        image?.let {
+                            AsyncImage(modifier = Modifier.fillMaxSize(), model = image, contentDescription =  null)
                         } ?: IconButton(modifier = Modifier.align(Alignment.Center).size(150.dp), onClick = onImageChooseClick ) {
                             Column {
                                 Icon(painter = painterResource(Res.drawable.ic_image_add_24),

@@ -1,5 +1,6 @@
 [versions]
 agp = "8.2.2"
+coilCompose = "3.0.4"
 filekitCore = "0.8.8"
 imageLoader = "1.9.0"
 kotlin = "2.0.21"
@@ -29,6 +30,7 @@ android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = 
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycleViewmodelKtx" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelKtx" }
 androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilCompose" }
 coroutines-extensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "nativeDriver" }
 filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekitCore" }
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekitCore" }
@@ -75,7 +77,7 @@ peekaboo-image-picker = { module = "io.github.onseok:peekaboo-image-picker", ver
 okio = {module = "com.squareup.okio:okio", version.ref = "okio"}
 androidx-datastore-core = { group = "androidx.datastore", name = "datastore-core", version.ref = "datastoreCore" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
-ffmpeg-kit-min = { module = "com.arthenica:ffmpeg-kit-min", version.ref = "ffmpegKitMin" }
+ffmpeg-kit-min = { module = "com.arthenica:ffmpeg-kit-min-gpl", version.ref = "ffmpegKitMin" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
