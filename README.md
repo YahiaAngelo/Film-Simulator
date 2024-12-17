@@ -1,11 +1,9 @@
 # FilmSimulator
 <p float="left">
-<img align="top" src="https://github.com/YahiaAngelo/Film-Simulator/blob/main/imgs/logo.jpg?raw=true" alt="logo" width="200"/>
-<img src="https://github.com/YahiaAngelo/Film-Simulator/blob/main/imgs/screenshot1.PNG?raw=true" alt="screenshot1" width="200"/>
-<img src="https://github.com/YahiaAngelo/Film-Simulator/blob/main/imgs/screenshot2.PNG?raw=true" alt="screenshot2" width="200"/>
+<img src="https://github.com/YahiaAngelo/Film-Simulator/blob/main/imgs/screenshots.jpg?raw=true" alt="screenshots"/>
 </p>
  <a href="https://apps.apple.com/us/app/film-simulator/id6736855160?itscg=30200&itsct=apps_box_badge&mttnsubad=6736855160" style="display: inline-block;">
- <img src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us?releaseDate=1728950400" alt="Download on the App Store" style="width: 246px; height: 82px; vertical-align: middle; object-fit: contain;" />
+ <img src="https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us?releaseDate=1728950400" alt="Download on the App Store" style="width: 200px; height: 82px; vertical-align: middle; object-fit: contain;" />
  </a>
  <a href="https://play.google.com/store/apps/details?id=io.github.yahiaangelo.filmsimulator.android" target="_blank">
   <img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" style="width: 200px; height: 82px; vertical-align: middle; object-fit: contain;"/>
