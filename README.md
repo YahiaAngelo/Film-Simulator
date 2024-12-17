@@ -1,4 +1,4 @@
-# FilmSimulator
+# Film Simulator
 <p float="left">
 <img src="https://github.com/YahiaAngelo/Film-Simulator/blob/main/imgs/screenshots.jpg?raw=true" alt="screenshots"/>
 </p>
