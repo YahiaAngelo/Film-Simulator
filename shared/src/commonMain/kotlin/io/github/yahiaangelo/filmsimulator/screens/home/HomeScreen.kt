@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Divider
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.OutlinedTextField
@@ -27,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material.rememberScaffoldState
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +48,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -73,6 +77,8 @@ import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
 import io.github.yahiaangelo.filmsimulator.view.AppScaffold
 import io.github.yahiaangelo.filmsimulator.view.ProgressDialog
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import okio.FileSystem
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -87,117 +93,164 @@ data class HomeScreen(
     override fun Content() {
         val scope = rememberCoroutineScope()
         val scaffoldState = rememberScaffoldState()
-        val sheetState = rememberModalBottomSheetState()
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         val navigator = LocalNavigator.currentOrThrow
         val snackbarHostState = remember { SnackbarHostState() }
-
 
         val vm = getScreenModel<HomeScreenModel>()
         val uiState by vm.uiState.collectAsState()
 
         val singleImagePicker = rememberFilePickerLauncher(mode = PickerMode.Single, type = PickerType.Image, onResult = vm::onImagePickerResult)
 
-
-        AppScaffold(
-            onVisibilityClick = vm::showOriginalImage,
+        val homeScreenState = HomeUiState(
+            image = uiState.image,
+            selectedFilm = uiState.selectedFilm,
+            isLoading = uiState.isLoading,
+            loadingMessage = uiState.loadingMessage,
+            showBottomSheet = uiState.showBottomSheet,
+            filmLuts = uiState.filmLuts,
+            userMessage = uiState.userMessage,
+            onRefresh = vm::refresh,
             onImageChooseClick = singleImagePicker::launch,
+            onFilmBoxClick = vm::showFilmLutsBottomSheet,
+            onDismissRequest = vm::dismissFilmLutBottomSheet,
+            onItemClick = vm::selectFilmLut,
+            onVisibilityClick = vm::showOriginalImage,
             onImageResetClick = vm::resetImage,
             onSettingsClick = { navigator.push(SettingsScreen()) },
             onImageExportClick = vm::exportImage,
-            snackbarHostState = snackbarHostState
-            ) { innerPadding ->
+            snackbarMessageShown = vm::snackbarMessageShown
+        )
 
-           HomeContent(
-               image = uiState.image,
-               selectedFilm = uiState.lut,
-               onRefresh = vm::refresh,
-               onImageChooseClick = singleImagePicker::launch,
-               onFilmBoxClick = vm::showFilmLutsBottomSheet,
-               modifier = Modifier.padding(innerPadding)
-           )
+        AppScaffold(
+            onVisibilityClick = homeScreenState.onVisibilityClick,
+            onImageChooseClick = homeScreenState.onImageChooseClick,
+            onImageResetClick = homeScreenState.onImageResetClick,
+            onSettingsClick = homeScreenState.onSettingsClick,
+            onImageExportClick = homeScreenState.onImageExportClick,
+            snackbarHostState = snackbarHostState
+        ) { innerPadding ->
+            HomeContent(
+                state = homeScreenState,
+                modifier = Modifier.padding(innerPadding)
+            )
         }
 
-        FilmLutsListBottomSheet(sheetState = sheetState, showBottomSheet = uiState.showBottomSheet, filmLuts = uiState.filmLutsList, onDismissRequest = vm::dismissFilmLutBottomSheet, onItemClick = vm::selectFilmLut)
-
-        uiState.userMessage?.let { message ->
-            LaunchedEffect(scaffoldState, vm, message) {
-                snackbarHostState.showSnackbar(message)
-                vm.snackbarMessageShown()
+        homeScreenState.showBottomSheet.let {
+            when (it) {
+                BottomSheetState.COLLAPSED -> {}
+                BottomSheetState.EXPANDED -> scope.launch { sheetState.expand() }
+                BottomSheetState.HIDDEN -> scope.launch { sheetState.hide() }
             }
         }
 
-        uiState.isLoading.let { loading ->
-            if (loading) ProgressDialog(loadingMessage = uiState.loadingMessage)
+        FilmLutsListBottomSheet(
+            state = homeScreenState,
+            sheetState = sheetState,
+        )
+
+        homeScreenState.userMessage?.let { message ->
+            LaunchedEffect(scaffoldState, vm, message) {
+                snackbarHostState.showSnackbar(message)
+                homeScreenState.snackbarMessageShown()
+            }
         }
 
-
+        if (homeScreenState.isLoading) {
+            ProgressDialog(loadingMessage = homeScreenState.loadingMessage)
+        }
     }
 
     @Composable
     private fun HomeContent(
-        image: String?,
-        selectedFilm : FilmLut?,
-        onRefresh: () -> Unit,
-        onImageChooseClick: () -> Unit,
-        onFilmBoxClick: () -> Unit,
+        state: HomeUiState,
         modifier: Modifier = Modifier
     ) {
-
         Column(modifier = modifier.padding(horizontal = 18.dp)) {
-
             Spacer(modifier = Modifier.size(23.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedCard (modifier = Modifier.align(Alignment.Center).fillMaxWidth()
-                    .height(
-                    height = 360.dp
-                ),
+                OutlinedCard(
+                    modifier = Modifier.align(Alignment.Center).fillMaxWidth().height(360.dp),
                     shape = MaterialTheme.shapes.large,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = CardDefaults.outlinedCardBorder(),
-                    onClick = onImageChooseClick
+                    onClick = state.onImageChooseClick
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        image?.let {
+                        state.image?.let {
                             AsyncImage(
-                                modifier = Modifier.fillMaxSize(), model = ImageRequest.Builder(
-                                    LocalPlatformContext.current
-                                )
-                                    .data("${FileSystem.SYSTEM_TEMPORARY_DIRECTORY}/${image.substringBefore("?")}") // removing the string added after "?" that was used to identify the state
-                                    .memoryCacheKey(image)
-                                    .diskCacheKey(image)
+                                modifier = Modifier.fillMaxSize(),
+                                model = ImageRequest.Builder(LocalPlatformContext.current)
+                                    .data("${FileSystem.SYSTEM_TEMPORARY_DIRECTORY}/${it.substringBefore("?")}")
+                                    .memoryCacheKey(it)
+                                    .diskCacheKey(it)
                                     .diskCachePolicy(CachePolicy.DISABLED)
-                                    .build(), contentDescription = null
+                                    .build(),
+                                contentDescription = null
                             )
-                        } ?: IconButton(modifier = Modifier.align(Alignment.Center).size(150.dp), onClick = onImageChooseClick ) {
+                        } ?: IconButton(
+                            modifier = Modifier.align(Alignment.Center).size(150.dp),
+                            onClick = state.onImageChooseClick
+                        ) {
                             Column {
-                                Icon(painter = painterResource(Res.drawable.ic_image_add_24),
-                                    null,
-                                    modifier = Modifier.size(65.dp, 65.dp).align(Alignment.CenterHorizontally),
+                                Icon(
+                                    painter = painterResource(Res.drawable.ic_image_add_24),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(65.dp, 65.dp).align(Alignment.CenterHorizontally)
                                 )
-                                Text(text = stringResource(Res.string.select_image),
+                                Text(
+                                    text = stringResource(Res.string.select_image),
                                     style = MaterialTheme.typography.labelLarge,
                                     modifier = Modifier.align(Alignment.CenterHorizontally)
                                 )
                             }
                         }
-
                     }
-
                 }
             }
             Spacer(modifier = Modifier.size(23.dp))
-
             Divider(modifier = Modifier.padding(28.dp, 0.dp))
-
             Spacer(modifier = Modifier.size(23.dp))
-
-            FilmLutBox(modifier = Modifier.fillMaxWidth(), selectedFilm = selectedFilm, onFilmBoxClick = onFilmBoxClick)
-
-
+            FilmLutBox(
+                modifier = Modifier.fillMaxWidth(),
+                selectedFilm = state.selectedFilm,
+                onFilmBoxClick = state.onFilmBoxClick,
+            )
         }
     }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun FilmLutsListBottomSheet(
+        state: HomeUiState,
+        sheetState: SheetState,
+    ) {
+        val listState: LazyListState = rememberLazyListState()
+        if (state.showBottomSheet == BottomSheetState.HIDDEN) return
+        ModalBottomSheet(
+            onDismissRequest = state.onDismissRequest,
+            sheetState = sheetState,
+            scrimColor = if (state.showBottomSheet == BottomSheetState.COLLAPSED) Color.Transparent else BottomSheetDefaults.ScrimColor,
+            contentWindowInsets = { WindowInsets.ime }
+        ) {
+            if (state.showBottomSheet == BottomSheetState.COLLAPSED) {
+                FilmLutBox(
+                    modifier = Modifier.fillMaxWidth().padding(18.dp),
+                    selectedFilm = state.selectedFilm ?: state.filmLuts.first(),
+                    onFilmBoxClick = state.onFilmBoxClick
+                )
+            } else {
+                FilmLutsList(
+                    listState = listState,
+                    filmLuts = state.filmLuts,
+                    onItemClick = {
+                        state.onItemClick(it)
+                    }
+                )
+            }
+        }
+    }
+
 
     @Composable
     private fun FilmLutBox(modifier: Modifier = Modifier, selectedFilm: FilmLut?, onFilmBoxClick: () -> Unit) {
@@ -228,25 +281,10 @@ data class HomeScreen(
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    private fun FilmLutsListBottomSheet(sheetState: SheetState, showBottomSheet: Boolean, filmLuts: List<FilmLut>, onDismissRequest: () -> Unit, onItemClick: (film: FilmLut) -> Unit) {
-
-        if (showBottomSheet) {
-            ModalBottomSheet(
-                onDismissRequest = onDismissRequest,
-                sheetState = sheetState,
-                contentWindowInsets = { WindowInsets.ime }
-            ) {
-                FilmLutsList(filmLuts = filmLuts, onItemClick = onItemClick)
-            }
-        }
-
-    }
 
     @OptIn(ExperimentalFoundationApi::class)
     @Composable
-    private fun FilmLutsList(filmLuts: List<FilmLut>, onItemClick: (film: FilmLut) -> Unit) {
+    private fun FilmLutsList(listState: LazyListState, filmLuts: List<FilmLut>, onItemClick: (film: FilmLut) -> Unit) {
         // State to hold the current search query
         var searchQuery by remember { mutableStateOf("") }
 
@@ -275,7 +313,7 @@ data class HomeScreen(
                 )
 
             // List
-            LazyColumn {
+            LazyColumn(state = listState) {
                 sortedAndGrouped.forEach { (category, films) ->
                     stickyHeader {
                         CategoryHeader(category)
