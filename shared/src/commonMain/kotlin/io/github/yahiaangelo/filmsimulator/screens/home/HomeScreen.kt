@@ -243,6 +243,7 @@ data class HomeScreen(
                 FilmLutsList(
                     listState = listState,
                     filmLuts = state.filmLuts,
+                    selectedFilm = state.selectedFilm,
                     onItemClick = {
                         state.onItemClick(it)
                     }
@@ -284,20 +285,19 @@ data class HomeScreen(
 
     @OptIn(ExperimentalFoundationApi::class)
     @Composable
-    private fun FilmLutsList(listState: LazyListState, filmLuts: List<FilmLut>, onItemClick: (film: FilmLut) -> Unit) {
-        // State to hold the current search query
+    private fun FilmLutsList(
+        listState: LazyListState,
+        filmLuts: List<FilmLut>,
+        selectedFilm: FilmLut?,
+        onItemClick: (film: FilmLut) -> Unit
+    ) {
         var searchQuery by remember { mutableStateOf("") }
-
-        // Filter filmLuts based on the search query
         val filteredFilmLuts = filmLuts.filter {
             searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true)
         }
-
-        // Group the filtered list by category
         val sortedAndGrouped = filteredFilmLuts.groupBy { it.category }
 
         Column {
-            // Search bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -310,16 +310,15 @@ data class HomeScreen(
                 },
                 textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface),
                 singleLine = true,
-                )
+            )
 
-            // List
             LazyColumn(state = listState) {
                 sortedAndGrouped.forEach { (category, films) ->
                     stickyHeader {
                         CategoryHeader(category)
                     }
                     items(films) { film ->
-                        FilmItem(film = film, onItemClick = onItemClick)
+                        FilmItem(film = film, selectedFilm = selectedFilm, onItemClick = onItemClick)
                     }
                 }
             }
@@ -347,8 +346,18 @@ data class HomeScreen(
 
     @OptIn(ExperimentalMaterialApi::class)
     @Composable
-    fun FilmItem(film: FilmLut, onItemClick: (film: FilmLut) -> Unit) {
-        Surface(color = MaterialTheme.colorScheme.surface, onClick = {onItemClick(film)}) {
+    fun FilmItem(
+        film: FilmLut,
+        selectedFilm: FilmLut?,
+        onItemClick: (film: FilmLut) -> Unit
+    ) {
+        val isSelected = film == selectedFilm
+        val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
+
+        Surface(
+            color = backgroundColor,
+            onClick = { onItemClick(film) }
+        ) {
             Row(modifier = Modifier.padding(vertical = 12.dp).fillMaxWidth()) {
                 Image(
                     painter = rememberImagePainter(GITHUB_BASE_URL + film.image_url),
@@ -363,7 +372,6 @@ data class HomeScreen(
                 )
             }
         }
-
     }
 
 }
