@@ -24,7 +24,9 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Surface
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -73,6 +75,7 @@ import film_simulator.shared.generated.resources.select_your_film
 import io.github.vinceglb.filekit.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.core.PickerMode
 import io.github.vinceglb.filekit.core.PickerType
+import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
@@ -110,6 +113,7 @@ data class HomeScreen(
             loadingMessage = uiState.loadingMessage,
             showBottomSheet = uiState.showBottomSheet,
             filmLuts = uiState.filmLuts,
+            favoriteLuts = uiState.favoriteLuts,
             userMessage = uiState.userMessage,
             onRefresh = vm::refresh,
             onImageChooseClick = singleImagePicker::launch,
@@ -120,7 +124,9 @@ data class HomeScreen(
             onImageResetClick = vm::resetImage,
             onSettingsClick = { navigator.push(SettingsScreen()) },
             onImageExportClick = vm::exportImage,
-            snackbarMessageShown = vm::snackbarMessageShown
+            snackbarMessageShown = vm::snackbarMessageShown,
+            onAddFavoriteClick = vm::addFavoriteFilm,
+            onRemoveFavoriteClick = vm::removeFavoriteFilm
         )
 
         AppScaffold(
@@ -172,7 +178,10 @@ data class HomeScreen(
             Spacer(modifier = Modifier.size(23.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedCard(
-                    modifier = Modifier.align(Alignment.Center).fillMaxWidth().height(360.dp),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .fillMaxWidth()
+                        .height(360.dp),
                     shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     border = CardDefaults.outlinedCardBorder(),
@@ -237,24 +246,27 @@ data class HomeScreen(
             scrimColor = if (state.showBottomSheet == BottomSheetState.COLLAPSED) Color.Transparent else BottomSheetDefaults.ScrimColor,
             contentWindowInsets = { WindowInsets.ime }
         ) {
-            if (state.showBottomSheet == BottomSheetState.COLLAPSED) {
-                Column {
+            Column {
+                if (state.showBottomSheet == BottomSheetState.COLLAPSED) {
                     FilmLutBox(
                         modifier = Modifier.fillMaxWidth().padding(18.dp),
                         selectedFilm = state.selectedFilm ?: state.filmLuts.first(),
                         onFilmBoxClick = state.onFilmBoxClick
                     )
-                    Spacer(modifier = Modifier.size(23.dp))
+                } else {
+                    FilmLutsList(
+                        listState = listState,
+                        filmLuts = state.filmLuts,
+                        favoriteLuts = state.favoriteLuts,
+                        selectedFilm = state.selectedFilm,
+                        onItemClick = {
+                            state.onItemClick(it)
+                        },
+                        onAddFavoriteClick = state.onAddFavoriteClick,
+                        onRemoveFavoriteClick = state.onRemoveFavoriteClick
+                    )
                 }
-            } else {
-                FilmLutsList(
-                    listState = listState,
-                    filmLuts = state.filmLuts,
-                    selectedFilm = state.selectedFilm,
-                    onItemClick = {
-                        state.onItemClick(it)
-                    }
-                )
+                Spacer(modifier = Modifier.size(23.dp))
             }
         }
     }
@@ -295,29 +307,46 @@ data class HomeScreen(
     private fun FilmLutsList(
         listState: LazyListState,
         filmLuts: List<FilmLut>,
+        favoriteLuts: List<FavoriteLut>,
         selectedFilm: FilmLut?,
-        onItemClick: (film: FilmLut) -> Unit
+        onItemClick: (film: FilmLut) -> Unit,
+        onAddFavoriteClick: (FilmLut) -> Unit,
+        onRemoveFavoriteClick: (FilmLut) -> Unit
     ) {
         var searchQuery by remember { mutableStateOf("") }
+        var favoriteFilter by remember { mutableStateOf(false) }
+
         val filteredFilmLuts = filmLuts.filter {
-            searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true)
+            (searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true)) &&
+                    (!favoriteFilter || favoriteLuts.any { favorite -> favorite.name == it.name })
         }
         val sortedAndGrouped = filteredFilmLuts.groupBy { it.category }
 
         Column {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
-                placeholder = { Text(text = stringResource(Res.string.search)) },
-                leadingIcon = {
-                    Icon(Icons.Filled.Search, contentDescription = "Search")
-                },
-                textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface),
-                singleLine = true,
-            )
+                    .padding(start = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text(text = stringResource(Res.string.search)) },
+                    leadingIcon = {
+                        Icon(Icons.Filled.Search, contentDescription = "Search")
+                    },
+                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface),
+                    singleLine = true,
+                )
+                IconButton(onClick = { favoriteFilter = !favoriteFilter }) {
+                    Icon(
+                        imageVector = if (favoriteFilter) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (favoriteFilter) "Show all" else "Show favorites"
+                    )
+                }
+            }
 
             LazyColumn(state = listState) {
                 sortedAndGrouped.forEach { (category, films) ->
@@ -325,7 +354,19 @@ data class HomeScreen(
                         CategoryHeader(category)
                     }
                     items(films) { film ->
-                        FilmItem(film = film, selectedFilm = selectedFilm, onItemClick = onItemClick)
+                        FilmItem(
+                            film = film,
+                            selectedFilm = selectedFilm,
+                            onItemClick = onItemClick,
+                            isFavorite = favoriteLuts.any { it.name == film.name },
+                            onFavoriteClick = {
+                                if (favoriteLuts.any { it.name == film.name }) {
+                                    onRemoveFavoriteClick(film)
+                                } else {
+                                    onAddFavoriteClick(film)
+                                }
+                            }
+                        )
                     }
                 }
             }
@@ -356,7 +397,9 @@ data class HomeScreen(
     fun FilmItem(
         film: FilmLut,
         selectedFilm: FilmLut?,
-        onItemClick: (film: FilmLut) -> Unit
+        onItemClick: (film: FilmLut) -> Unit,
+        isFavorite: Boolean,
+        onFavoriteClick: () -> Unit
     ) {
         val isSelected = film == selectedFilm
         val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
@@ -365,7 +408,7 @@ data class HomeScreen(
             color = backgroundColor,
             onClick = { onItemClick(film) }
         ) {
-            Row(modifier = Modifier.padding(vertical = 12.dp).fillMaxWidth()) {
+            Row(modifier = Modifier.padding(vertical = 12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Image(
                     painter = rememberImagePainter(GITHUB_BASE_URL + film.image_url),
                     contentDescription = film.name,
@@ -375,8 +418,14 @@ data class HomeScreen(
                 Text(
                     text = film.name,
                     style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
                 )
+                IconButton(onClick = onFavoriteClick) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites"
+                    )
+                }
             }
         }
     }

@@ -4,8 +4,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import io.github.vinceglb.filekit.core.PlatformFile
+import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.FilmRepository
+import io.github.yahiaangelo.filmsimulator.data.source.toFavoriteLut
 import io.github.yahiaangelo.filmsimulator.util.AppContext
 import io.github.yahiaangelo.filmsimulator.util.fixImageOrientation
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +38,7 @@ data class HomeUiState(
     val loadingMessage: String = "",
     val showBottomSheet: BottomSheetState = BottomSheetState.HIDDEN,
     val filmLuts: List<FilmLut> = emptyList(),
+    val favoriteLuts: List<FavoriteLut> = emptyList(),
     val userMessage: String? = null,
     val onRefresh: () -> Unit = {},
     val onImageChooseClick: () -> Unit = {},
@@ -46,7 +49,9 @@ data class HomeUiState(
     val onImageResetClick: () -> Unit = {},
     val onSettingsClick: () -> Unit = {},
     val onImageExportClick: () -> Unit = {},
-    val snackbarMessageShown: () -> Unit = {}
+    val snackbarMessageShown: () -> Unit = {},
+    val onAddFavoriteClick: (FilmLut) -> Unit = {},
+    val onRemoveFavoriteClick: (FilmLut) -> Unit = {}
 )
 
 enum class BottomSheetState {
@@ -77,7 +82,8 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
                 updateUiState { it.copy(isLoading = true, loadingMessage = "Refreshing data...") }
                 repository.refresh()
                 val newFilmList = repository.getFilmsStream().first()
-                updateUiState { it.copy(filmLuts = newFilmList, userMessage = "Data refreshed successfully.") }
+                val newFavoriteList = repository.getFavoriteFilmsStream().first()
+                updateUiState { it.copy(filmLuts = newFilmList, favoriteLuts = newFavoriteList, userMessage = "Data refreshed successfully.") }
             } catch (e: Exception) {
                 updateUiState { it.copy(userMessage = "Error refreshing data: ${e.message}") }
             } finally {
@@ -112,7 +118,6 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
             screenModelScope.launch {
                 saveImageFile(IMAGE_FILE_NAME, it.readBytes())
                 saveImageFile(EDITED_IMAGE_FILE_NAME, it.readBytes())
-                //fixImageOrientation(image = IMAGE_FILE_NAME) //Disabled for now since the CoilZoomAsyncImage already fixes the EXIF orientation
                 _originalImage.emit(IMAGE_FILE_NAME)
                 _editedImage.emit(IMAGE_FILE_NAME)
                 emitImage(IMAGE_FILE_NAME)
@@ -155,7 +160,12 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
         _editedImage.value?.let {
             screenModelScope.launch {
                 try {
-                    updateUiState { it.copy(isLoading = true, loadingMessage = "Exporting image...") }
+                    updateUiState {
+                        it.copy(
+                            isLoading = true,
+                            loadingMessage = "Exporting image..."
+                        )
+                    }
                     saveImageToGallery(EDITED_IMAGE_FILE_NAME, appContext = AppContext)
                     updateUiState { it.copy(userMessage = "Image exported successfully.") }
                 } catch (e: Exception) {
@@ -165,5 +175,25 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
                 }
             }
         } ?: updateUiState { it.copy(userMessage = "Please choose an image first.") }
+    }
+    fun addFavoriteFilm(filmLut: FilmLut) {
+        screenModelScope.launch {
+            try {
+                val newFavoriteLutList = repository.addFavoriteFilm(filmLut.toFavoriteLut())
+                updateUiState { it.copy(favoriteLuts = newFavoriteLutList, userMessage = "Added to favorites.") }
+            } catch (e: Exception) {
+                updateUiState { it.copy(userMessage = "Error adding to favorites: ${e.message}") }
+            }
+        }
+    }
+    fun removeFavoriteFilm(filmLut: FilmLut) {
+        screenModelScope.launch {
+            try {
+                val newFavoriteLutList = repository.removeFavoriteFilm(filmLut.name)
+                updateUiState { it.copy(favoriteLuts = newFavoriteLutList, userMessage = "Removed from favorites.") }
+            } catch (e: Exception) {
+                updateUiState { it.copy(userMessage = "Error removing from favorites: ${e.message}") }
+            }
+        }
     }
 }

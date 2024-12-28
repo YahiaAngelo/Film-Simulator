@@ -1,0 +1,28 @@
+CREATE TABLE favoriteLut (
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    image_url TEXT NOT NULL,
+    lut_name TEXT NOT NULL
+);
+
+CREATE INDEX favoriteLut_name ON favoriteLut(name);
+
+selectAllFavoriteLuts:
+SELECT *
+FROM favoriteLut;
+
+selectFavoriteByName:
+SELECT *
+FROM favoriteLut
+WHERE name = ?;
+
+insertFavoriteLut:
+INSERT OR IGNORE INTO favoriteLut(name, category, image_url, lut_name)
+VALUES (?, ?, ?, ?);
+
+removeFavoriteLut:
+DELETE FROM favoriteLut
+WHERE name = ?;
+
+removeAllFavoriteLuts:
+DELETE FROM favoriteLut;
