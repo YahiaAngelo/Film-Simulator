@@ -3,6 +3,7 @@ package io.github.yahiaangelo.filmsimulator.data.source.local
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.coroutines.mapToOneOrNull
+import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.LutCube
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +18,7 @@ val filmLocalDataSourceModule = module {
 internal class FilmLocalDataSource(appDatabase: AppDatabase){
 
     private val filmQueries = appDatabase.database.filmLutQueries
+    private val favoriteQueries = appDatabase.database.favoriteLutQueries
     private val lutQueries = appDatabase.database.lutCubeQueries
 
 
@@ -88,5 +90,33 @@ internal class FilmLocalDataSource(appDatabase: AppDatabase){
 
     private fun insertLutCube(lutCube: LutCube) {
         lutQueries.insertLutCube(name = lutCube.name, file_ = lutCube.file_)
+    }
+
+    internal fun observeFavoriteLuts(): Flow<List<FavoriteLut>> {
+        return favoriteQueries.selectAllFavoriteLuts()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+    }
+
+    internal fun getFavoriteLuts(): List<FavoriteLut> {
+        return favoriteQueries.selectAllFavoriteLuts().executeAsList()
+    }
+
+    internal fun getFavoriteLutStream(name: String): Flow<FavoriteLut?> {
+        return favoriteQueries.selectFavoriteByName(name).asFlow().mapToOneOrNull(Dispatchers.IO)
+    }
+
+    internal fun addFavoriteLut(filmLut: FavoriteLut): List<FavoriteLut> {
+        favoriteQueries.insertFavoriteLut(name = filmLut.name, category = filmLut.category, image_url = filmLut.image_url, lut_name = filmLut.lut_name)
+        return getFavoriteLuts()
+    }
+
+    internal fun removeFavoriteLut(name: String): List<FavoriteLut>  {
+        favoriteQueries.removeFavoriteLut(name)
+        return getFavoriteLuts()
+    }
+
+    internal fun clearFavoriteDatabase() {
+        favoriteQueries.removeAllFavoriteLuts()
     }
 }

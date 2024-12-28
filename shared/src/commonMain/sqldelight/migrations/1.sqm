@@ -1,0 +1,8 @@
+CREATE TABLE favoriteLut (
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    image_url TEXT NOT NULL,
+    lut_name TEXT NOT NULL
+);
+
+CREATE INDEX favoriteLut_name ON favoriteLut(name);

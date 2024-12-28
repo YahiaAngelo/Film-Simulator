@@ -14,4 +14,11 @@ fun NetworkFilmLut.toLocal() = FilmLut(
     lut_name = lutFile
 )
 
+fun FilmLut.toFavoriteLut() = io.github.yahiaangelo.filmsimulator.FavoriteLut(
+    name = name,
+    category = category,
+    image_url = image_url,
+    lut_name = lut_name
+)
+
 fun List<NetworkFilmLut>.toLocal() = map(NetworkFilmLut::toLocal)
