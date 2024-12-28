@@ -24,6 +24,7 @@ ffmpegKitMin = "6.0-2"
 kotlinxCoroutinesCore = "1.8.0"
 lifecycleViewmodelKtx = "2.8.7"
 ui-tooling-preview = "1.6.0-rc01"
+zoomimageComposeCoil3 = "1.1.0"
 
 
 [libraries]
@@ -80,6 +81,7 @@ okio = {module = "com.squareup.okio:okio", version.ref = "okio"}
 androidx-datastore-core = { group = "androidx.datastore", name = "datastore-core", version.ref = "datastoreCore" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
 ffmpeg-kit-min = { module = "com.arthenica:ffmpeg-kit-min-gpl", version.ref = "ffmpegKitMin" }
+zoomimage-compose-coil3 = { module = "io.github.panpf.zoomimage:zoomimage-compose-coil3", version.ref = "zoomimageComposeCoil3" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

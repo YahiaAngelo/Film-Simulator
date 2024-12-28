@@ -112,7 +112,7 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
             screenModelScope.launch {
                 saveImageFile(IMAGE_FILE_NAME, it.readBytes())
                 saveImageFile(EDITED_IMAGE_FILE_NAME, it.readBytes())
-                fixImageOrientation(image = IMAGE_FILE_NAME)
+                //fixImageOrientation(image = IMAGE_FILE_NAME) //Disabled for now since the CoilZoomAsyncImage already fixes the EXIF orientation
                 _originalImage.emit(IMAGE_FILE_NAME)
                 _editedImage.emit(IMAGE_FILE_NAME)
                 emitImage(IMAGE_FILE_NAME)
