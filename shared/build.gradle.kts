@@ -94,6 +94,7 @@ kotlin {
             implementation(libs.multiplatform.settings.coroutines)
             api(libs.image.loader)
             implementation(libs.coil.compose)
+            implementation(libs.zoomimage.compose.coil3)
             implementation(libs.filekit.core)
             implementation(libs.filekit.compose)
             implementation(libs.kotlinx.datetime)

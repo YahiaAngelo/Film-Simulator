@@ -56,10 +56,11 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import com.github.panpf.zoomimage.CoilZoomAsyncImage
+import com.github.panpf.zoomimage.rememberCoilZoomState
 import com.seiko.imageloader.rememberImagePainter
 
 import film_simulator.shared.generated.resources.Res
@@ -166,6 +167,7 @@ data class HomeScreen(
         state: HomeUiState,
         modifier: Modifier = Modifier
     ) {
+        val zoomState = rememberCoilZoomState()
         Column(modifier = modifier.padding(horizontal = 18.dp)) {
             Spacer(modifier = Modifier.size(23.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
@@ -178,15 +180,17 @@ data class HomeScreen(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         state.image?.let {
-                            AsyncImage(
+                            CoilZoomAsyncImage(
                                 modifier = Modifier.fillMaxSize(),
+                                zoomState = zoomState,
                                 model = ImageRequest.Builder(LocalPlatformContext.current)
                                     .data("${FileSystem.SYSTEM_TEMPORARY_DIRECTORY}/${it.substringBefore("?")}")
                                     .memoryCacheKey(it)
                                     .diskCacheKey(it)
                                     .diskCachePolicy(CachePolicy.DISABLED)
                                     .build(),
-                                contentDescription = null
+                                contentDescription = null,
+                                scrollBar = null
                             )
                         } ?: IconButton(
                             modifier = Modifier.align(Alignment.Center).size(150.dp),
