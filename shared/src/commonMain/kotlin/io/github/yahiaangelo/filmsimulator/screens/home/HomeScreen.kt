@@ -234,11 +234,14 @@ data class HomeScreen(
             contentWindowInsets = { WindowInsets.ime }
         ) {
             if (state.showBottomSheet == BottomSheetState.COLLAPSED) {
-                FilmLutBox(
-                    modifier = Modifier.fillMaxWidth().padding(18.dp),
-                    selectedFilm = state.selectedFilm ?: state.filmLuts.first(),
-                    onFilmBoxClick = state.onFilmBoxClick
-                )
+                Column {
+                    FilmLutBox(
+                        modifier = Modifier.fillMaxWidth().padding(18.dp),
+                        selectedFilm = state.selectedFilm ?: state.filmLuts.first(),
+                        onFilmBoxClick = state.onFilmBoxClick
+                    )
+                    Spacer(modifier = Modifier.size(23.dp))
+                }
             } else {
                 FilmLutsList(
                     listState = listState,
