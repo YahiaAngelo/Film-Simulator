@@ -97,7 +97,7 @@ data class HomeScreen(
     override fun Content() {
         val scope = rememberCoroutineScope()
         val scaffoldState = rememberScaffoldState()
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val navigator = LocalNavigator.currentOrThrow
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -248,10 +248,18 @@ data class HomeScreen(
         ) {
             Column {
                 if (state.showBottomSheet == BottomSheetState.COLLAPSED) {
-                    FilmLutBox(
-                        modifier = Modifier.fillMaxWidth().padding(18.dp),
-                        selectedFilm = state.selectedFilm ?: state.filmLuts.first(),
-                        onFilmBoxClick = state.onFilmBoxClick
+                    FilmItem(
+                        film = state.selectedFilm ?: state.filmLuts.first(),
+                        selectedFilm = state.selectedFilm,
+                        onItemClick = { state.onFilmBoxClick() },
+                        isFavorite = state.favoriteLuts.any { it.name == state.selectedFilm?.name },
+                        onFavoriteClick = {
+                            if (state.favoriteLuts.any { it.name == state.selectedFilm?.name }) {
+                                state.onRemoveFavoriteClick(state.selectedFilm ?: state.filmLuts.first())
+                            } else {
+                                state.onAddFavoriteClick(state.selectedFilm ?: state.filmLuts.first())
+                            }
+                        }
                     )
                 } else {
                     FilmLutsList(
