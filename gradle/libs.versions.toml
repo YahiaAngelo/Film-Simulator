@@ -1,5 +1,6 @@
 [versions]
 agp = "8.2.2"
+autolinktext = "2.0.0"
 coilCompose = "3.0.4"
 filekitCore = "0.8.8"
 imageLoader = "1.9.0"
@@ -32,6 +33,7 @@ android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = 
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycleViewmodelKtx" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelKtx" }
 androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
+autolinktext = { module = "sh.calvin.autolinktext:autolinktext", version.ref = "autolinktext" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilCompose" }
 coroutines-extensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "nativeDriver" }
 filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekitCore" }

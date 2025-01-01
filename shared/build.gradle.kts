@@ -98,6 +98,7 @@ kotlin {
             implementation(libs.filekit.core)
             implementation(libs.filekit.compose)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.autolinktext)
             //api(libs.image.loader.extension.blur)
         }
 
