@@ -1,5 +1,5 @@
 [versions]
-agp = "8.2.2"
+agp = "8.7.0"
 autolinktext = "2.0.0"
 coilCompose = "3.0.4"
 filekitCore = "0.8.8"

@@ -6,11 +6,11 @@ plugins {
 
 android {
     namespace = "io.github.yahiaangelo.filmsimulator.android"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig {
         applicationId = "io.github.yahiaangelo.filmsimulator.android"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 5
         versionName = "0.2.1"
     }
