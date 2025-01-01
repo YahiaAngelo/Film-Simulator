@@ -116,7 +116,7 @@ kotlin {
 
 android {
     namespace = "io.github.yahiaangelo.filmsimulator"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig {
         minSdk = 24
     }
