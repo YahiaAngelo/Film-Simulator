@@ -1,5 +1,6 @@
 [versions]
-agp = "8.2.2"
+agp = "8.7.0"
+autolinktext = "2.0.0"
 coilCompose = "3.0.4"
 filekitCore = "0.8.8"
 imageLoader = "1.9.0"
@@ -24,6 +25,7 @@ ffmpegKitMin = "6.0-2"
 kotlinxCoroutinesCore = "1.8.0"
 lifecycleViewmodelKtx = "2.8.7"
 ui-tooling-preview = "1.6.0-rc01"
+zoomimageComposeCoil3 = "1.1.0"
 
 
 [libraries]
@@ -31,6 +33,7 @@ android-driver = { module = "app.cash.sqldelight:android-driver", version.ref = 
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycleViewmodelKtx" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleViewmodelKtx" }
 androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycleViewmodelKtx" }
+autolinktext = { module = "sh.calvin.autolinktext:autolinktext", version.ref = "autolinktext" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coilCompose" }
 coroutines-extensions = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "nativeDriver" }
 filekit-compose = { module = "io.github.vinceglb:filekit-compose", version.ref = "filekitCore" }
@@ -80,6 +83,7 @@ okio = {module = "com.squareup.okio:okio", version.ref = "okio"}
 androidx-datastore-core = { group = "androidx.datastore", name = "datastore-core", version.ref = "datastoreCore" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
 ffmpeg-kit-min = { module = "com.arthenica:ffmpeg-kit-min-gpl", version.ref = "ffmpegKitMin" }
+zoomimage-compose-coil3 = { module = "io.github.panpf.zoomimage:zoomimage-compose-coil3", version.ref = "zoomimageComposeCoil3" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

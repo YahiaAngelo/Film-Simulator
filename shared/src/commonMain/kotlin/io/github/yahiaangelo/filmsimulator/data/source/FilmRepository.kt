@@ -1,6 +1,7 @@
 package io.github.yahiaangelo.filmsimulator.data.source
 
 import androidx.compose.ui.graphics.ImageBitmap
+import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.LutCube
 import kotlinx.coroutines.CoroutineScope
@@ -30,4 +31,17 @@ interface FilmRepository {
     suspend fun downloadLutCube(name: String)
 
     suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, image: String, onComplete: (String) -> Unit)
+
+    // Methods for handling favorite LUTs
+    fun getFavoriteFilmsStream(): Flow<List<FavoriteLut>>
+
+    suspend fun getFavoriteFilms(): List<FavoriteLut>
+
+    fun getFavoriteFilmStream(name: String): Flow<FavoriteLut?>
+
+    suspend fun addFavoriteFilm(filmLut: FavoriteLut): List<FavoriteLut>
+
+    suspend fun removeFavoriteFilm(name: String): List<FavoriteLut>
+
+    suspend fun clearFavoriteFilms()
 }

@@ -1,7 +1,12 @@
 package io.github.yahiaangelo.filmsimulator.screens.settings
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.Divider
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.ListItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.rememberScaffoldState
@@ -23,15 +28,24 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import film_simulator.shared.generated.resources.Res
+import film_simulator.shared.generated.resources.about
+import film_simulator.shared.generated.resources.app_version
+import film_simulator.shared.generated.resources.contact
+import film_simulator.shared.generated.resources.developer
 import film_simulator.shared.generated.resources.image_export_quality
 import film_simulator.shared.generated.resources.settings
+import film_simulator.shared.generated.resources.source_code
+import io.github.yahiaangelo.filmsimulator.util.AppContext
+import io.github.yahiaangelo.filmsimulator.util.Platform
 import org.jetbrains.compose.resources.stringResource
+import sh.calvin.autolinktext.rememberAutoLinkText
 
 
 class SettingsScreen : Screen {
@@ -43,11 +57,8 @@ class SettingsScreen : Screen {
         val scaffoldState = rememberScaffoldState()
         val snackbarHostState = remember { SnackbarHostState() }
 
-
         val vm = getScreenModel<SettingsScreenModel>()
         val uiState by vm.uiState.collectAsState()
-
-
 
         Scaffold(
             snackbarHost = {
@@ -61,7 +72,10 @@ class SettingsScreen : Screen {
                         titleContentColor = MaterialTheme.colorScheme.primary,
                     ),
                     title = {
-                        Text(stringResource(Res.string.settings), color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            stringResource(Res.string.settings),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     },
                     navigationIcon = {
                         IconButton(onClick = {
@@ -81,6 +95,7 @@ class SettingsScreen : Screen {
                 modifier = Modifier
                     .padding(paddingValues)
                     .padding(16.dp)
+                    .fillMaxHeight(),
             ) {
                 SettingsSlider(
                     name = stringResource(Res.string.image_export_quality),
@@ -89,6 +104,9 @@ class SettingsScreen : Screen {
                     range = 25f..100f,
                     onValueChange = vm::updateExportQualitySettings
                 )
+                Spacer(modifier = Modifier.padding(16.dp))
+                Divider(color = MaterialTheme.colorScheme.secondaryContainer, thickness = 1.dp)
+                AboutSection()
             }
         }
 
@@ -98,9 +116,7 @@ class SettingsScreen : Screen {
                 vm.snackbarMessageShown()
             }
         }
-
     }
-
 
     @Composable
     private fun SettingsSlider(
@@ -132,5 +148,45 @@ class SettingsScreen : Screen {
             Text(text = value.toInt().toString())
         }
 
+    }
+
+    @OptIn(ExperimentalMaterialApi::class)
+    @Composable
+    fun AboutSection() {
+        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+            ListItem(
+                text = { Text(text = stringResource(Res.string.app_version)) },
+                secondaryText = { Text(text = Platform(AppContext).getAppVersion()) }
+            )
+
+            ListItem(
+                text = { Text(text = stringResource(Res.string.developer)) },
+                secondaryText = { Text(text = "YahiaAngelo") }
+            )
+
+            ListItem(
+                text = { Text(text = stringResource(Res.string.source_code)) },
+                secondaryText = {
+                    Text(
+                        AnnotatedString.rememberAutoLinkText(
+                            "https://github.com/YahiaAngelo".trimMargin()
+                        ),
+                    )
+                }
+            )
+
+            ListItem(
+                text = { Text(text = stringResource(Res.string.contact)) },
+                secondaryText = {
+                    Text(
+                        AnnotatedString.rememberAutoLinkText(
+                            "https://x.com/YahiaDev".trimMargin()
+                        ),
+                    )
+                }
+            )
+
+
+        }
     }
 }

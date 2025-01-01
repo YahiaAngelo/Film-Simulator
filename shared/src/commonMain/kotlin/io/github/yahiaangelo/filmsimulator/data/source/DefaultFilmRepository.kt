@@ -1,6 +1,7 @@
 package io.github.yahiaangelo.filmsimulator.data.source
 
 import androidx.compose.ui.graphics.ImageBitmap
+import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.LutCube
 import io.github.yahiaangelo.filmsimulator.data.source.local.FilmLocalDataSource
@@ -109,6 +110,38 @@ internal class DefaultFilmRepository(
                     onComplete(outputFile)
                 }
             }
+        }
+    }
+
+    override fun getFavoriteFilmsStream(): Flow<List<FavoriteLut>> {
+        return localDataSource.observeFavoriteLuts()
+    }
+
+    override suspend fun getFavoriteFilms(): List<FavoriteLut> {
+        return withContext(Dispatchers.IO) {
+            localDataSource.getFavoriteLuts()
+        }
+    }
+
+    override fun getFavoriteFilmStream(name: String): Flow<FavoriteLut?> {
+        return localDataSource.getFavoriteLutStream(name)
+    }
+
+    override suspend fun addFavoriteFilm(filmLut: FavoriteLut): List<FavoriteLut> {
+        return withContext(Dispatchers.IO) {
+            localDataSource.addFavoriteLut(filmLut)
+        }
+    }
+
+    override suspend fun removeFavoriteFilm(name: String): List<FavoriteLut> {
+        return withContext(Dispatchers.IO) {
+            localDataSource.removeFavoriteLut(name)
+        }
+    }
+
+    override suspend fun clearFavoriteFilms() {
+        withContext(Dispatchers.IO) {
+            localDataSource.clearFavoriteDatabase()
         }
     }
 }

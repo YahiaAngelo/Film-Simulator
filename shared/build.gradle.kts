@@ -94,9 +94,11 @@ kotlin {
             implementation(libs.multiplatform.settings.coroutines)
             api(libs.image.loader)
             implementation(libs.coil.compose)
+            implementation(libs.zoomimage.compose.coil3)
             implementation(libs.filekit.core)
             implementation(libs.filekit.compose)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.autolinktext)
             //api(libs.image.loader.extension.blur)
         }
 
@@ -114,7 +116,7 @@ kotlin {
 
 android {
     namespace = "io.github.yahiaangelo.filmsimulator"
-    compileSdk = 34
+    compileSdk = 35
     defaultConfig {
         minSdk = 24
     }
