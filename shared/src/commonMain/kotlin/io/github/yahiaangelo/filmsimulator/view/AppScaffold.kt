@@ -1,6 +1,9 @@
 package io.github.yahiaangelo.filmsimulator.view
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -19,6 +22,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import film_simulator.shared.generated.resources.Res
 import film_simulator.shared.generated.resources.app_name
@@ -30,6 +38,34 @@ import film_simulator.shared.generated.resources.image_24
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
+@Composable
+private fun ToggleableEyeIcon(
+    isVisible: Boolean,
+    contentDescription: String?,
+    lineColor: Color
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(24.dp)
+    ) {
+        Icon(
+            painter = painterResource(Res.drawable.ic_visibility_24),
+            contentDescription = contentDescription
+        )
+        if (!isVisible) {
+            Canvas(modifier = Modifier.size(24.dp)) {
+                drawLine(
+                    color = lineColor,
+                    start = Offset(8f, 8f),
+                    end = Offset(size.width - 8f, size.height - 8f),
+                    strokeWidth = 2.5f,
+                    cap = StrokeCap.Round
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScaffold(
@@ -40,14 +76,13 @@ fun AppScaffold(
     onImageExportClick: () -> Unit,
     snackbarHostState: SnackbarHostState,
     content: @Composable (innerPadding: PaddingValues) -> Unit,
-
 ) {
     var showOriginalImage by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
         snackbarHost = {
-                       SnackbarHost(hostState = snackbarHostState)
+            SnackbarHost(hostState = snackbarHostState)
         },
         topBar = {
             CenterAlignedTopAppBar(
@@ -63,9 +98,10 @@ fun AppScaffold(
                         showOriginalImage = !showOriginalImage
                         onVisibilityClick(showOriginalImage)
                     }) {
-                        Icon(
-                            painter = painterResource(Res.drawable.ic_visibility_24),
-                            contentDescription = null
+                        ToggleableEyeIcon(
+                            isVisible = showOriginalImage,
+                            contentDescription = if (showOriginalImage) "Hide original" else "Show original",
+                            lineColor = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -101,7 +137,8 @@ fun AppScaffold(
                         elevation = FloatingActionButtonDefaults.elevation(0.dp),
                         onClick = onImageExportClick,
                     ) {
-                        Icon(painter = painterResource(Res.drawable.ic_upload_24),
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_upload_24),
                             null,
                             tint = MaterialTheme.colorScheme.onSurface
                         )
