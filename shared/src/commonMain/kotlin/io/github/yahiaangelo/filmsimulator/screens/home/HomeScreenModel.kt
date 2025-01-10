@@ -121,7 +121,7 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
 
     fun onImagePickerResult(file: PlatformFile?) {
         file?.let { platformFile ->
-            if (!supportedImageExtensions.contains(platformFile.extension)) {
+            if (!supportedImageExtensions.contains(platformFile.extension.lowercase())) {
                 updateUiState { it.copy(userMessage = "Unsupported image type.") }
                 return
             }
