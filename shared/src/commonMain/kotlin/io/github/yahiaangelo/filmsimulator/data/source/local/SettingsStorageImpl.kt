@@ -1,8 +1,14 @@
 package io.github.yahiaangelo.filmsimulator.data.source.local
 
+import com.russhwolf.settings.ExperimentalSettingsApi
+import com.russhwolf.settings.ObservableSettings
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
+import com.russhwolf.settings.observable.makeObservable
 import com.russhwolf.settings.set
+import io.github.yahiaangelo.filmsimulator.PlatformName
+import io.github.yahiaangelo.filmsimulator.getPlatform
+import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
@@ -16,14 +22,35 @@ val settingsStorageImplModule = module {
 class SettingsStorageImpl : SettingsStorage {
 
     private val settings: Settings by lazy { Settings() }
+
+    @OptIn(ExperimentalSettingsApi::class)
+    private val observableSettings: ObservableSettings by lazy { settings.makeObservable() }
+
     override var exportQuality: Int
-        get() = settings[StorageKeys.EXPORT_QUALITY.key] ?: 90
+        get() = observableSettings[StorageKeys.EXPORT_QUALITY.key] ?: 90
         set(value) {
-            settings[StorageKeys.EXPORT_QUALITY.key] = value
+            observableSettings[StorageKeys.EXPORT_QUALITY.key] = value
+        }
+    override var defaultPicker: DefaultPickerType
+        get() = DefaultPickerType.valueOf(
+            observableSettings[StorageKeys.DEFAULT_PICKER.key]
+                ?: if (getPlatform().name == PlatformName.IOS) DefaultPickerType.IMAGES.name else DefaultPickerType.FILES.name
+        )
+        set(value) {
+            observableSettings[StorageKeys.DEFAULT_PICKER.key] = value.name
         }
 
+    override fun defaultPickerListener(callback: (DefaultPickerType) -> Unit) {
+        observableSettings.addStringListener(
+            StorageKeys.DEFAULT_PICKER.key,
+            defaultValue = DefaultPickerType.IMAGES.name,
+            callback = { newValue ->
+                callback(DefaultPickerType.valueOf(newValue))
+            })
+    }
+
     override fun cleanStorage() {
-        settings.clear()
+        observableSettings.clear()
     }
 
 

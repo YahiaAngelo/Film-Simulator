@@ -30,7 +30,7 @@ interface FilmRepository {
 
     suspend fun downloadLutCube(name: String)
 
-    suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, image: String, onComplete: (String) -> Unit)
+    suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, image: String, onComplete: (String) -> Unit, onError: (String) -> Unit)
 
     // Methods for handling favorite LUTs
     fun getFavoriteFilmsStream(): Flow<List<FavoriteLut>>
