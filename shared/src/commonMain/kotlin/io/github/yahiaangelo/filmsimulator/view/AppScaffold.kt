@@ -26,6 +26,7 @@ import film_simulator.shared.generated.resources.ic_reset_image_24
 import film_simulator.shared.generated.resources.ic_settings_24
 import film_simulator.shared.generated.resources.ic_upload_24
 import film_simulator.shared.generated.resources.ic_visibility_24
+import film_simulator.shared.generated.resources.ic_visibility_off_24
 import film_simulator.shared.generated.resources.image_24
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -64,7 +65,7 @@ fun AppScaffold(
                         onVisibilityClick(showOriginalImage)
                     }) {
                         Icon(
-                            painter = painterResource(Res.drawable.ic_visibility_24),
+                            painter = painterResource(if (showOriginalImage) Res.drawable.ic_visibility_off_24 else Res.drawable.ic_visibility_24),
                             contentDescription = null
                         )
                     }

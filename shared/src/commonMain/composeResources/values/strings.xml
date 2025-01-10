@@ -13,6 +13,10 @@
     <string name="developer">Developer</string>
     <string name="source_code">Source Code</string>
     <string name="contact">Contact</string>
+    <string name="default_picker">Default Picker</string>
+    <string name="images">Images</string>
+    <string name="files">Files</string>
+    <string name="cancel">Cancel</string>
     <string name="about_text">Film Simulator is a tool to simulate the look of analog film using 3D LUTs. It is a free and open-source project. You can find the source code on GitHub.</string>
 
 </resources>
