@@ -102,13 +102,25 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
         _originalImage.value?.let { image ->
             screenModelScope.launch {
                 try {
-                    updateUiState { it.copy(isLoading = true, loadingMessage = "Applying Film LUT...") }
+                    updateUiState {
+                        it.copy(
+                            isLoading = true,
+                            loadingMessage = "Applying Film LUT..."
+                        )
+                    }
                     withContext(Dispatchers.IO) {
-                        repository.applyFilmLut(scope = screenModelScope, filmLut = filmLut, image = image) {resultImage ->
-                            screenModelScope.launch { _editedImage.emit(resultImage) }
-                            updateUiState { it.copy(selectedFilm = filmLut) }
-                            emitImage(resultImage)
-                        }
+                        repository.applyFilmLut(
+                            scope = screenModelScope,
+                            filmLut = filmLut,
+                            image = image,
+                            onComplete = { resultImage ->
+                                screenModelScope.launch { _editedImage.emit(resultImage) }
+                                updateUiState { it.copy(selectedFilm = filmLut) }
+                                emitImage(resultImage)
+                            },
+                            onError = { error ->
+                                updateUiState { it.copy(userMessage = "Error applying LUT: $error") }
+                            })
                     }
                 } catch (e: Exception) {
                     updateUiState { it.copy(userMessage = "Error applying LUT: ${e.message}") }

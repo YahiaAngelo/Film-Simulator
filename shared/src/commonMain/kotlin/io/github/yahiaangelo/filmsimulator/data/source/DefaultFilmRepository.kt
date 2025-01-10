@@ -88,28 +88,29 @@ internal class DefaultFilmRepository(
     }
 
 
-    override suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, image: String, onComplete: (String) -> Unit){
+    override suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, image: String, onComplete: (String) -> Unit, onError: (String) -> Unit){
        var lutCube = getLutCube(filmLut.lut_name)
         if (lutCube == null) {
             downloadLutCube(filmLut.lut_name)
             lutCube = getLutCube(filmLut.lut_name)
         }
 
-        applyLutFile(scope = scope, lutCube = lutCube!!, image = image) {
+        applyLutFile(scope = scope, lutCube = lutCube!!, image = image, onComplete = {
             onComplete(it)
-        }
+        }, onError = onError)
     }
 
-    private suspend fun applyLutFile(scope: CoroutineScope, lutCube: LutCube, image: String, onComplete: (String) -> Unit) {
+    private suspend fun applyLutFile(scope: CoroutineScope, lutCube: LutCube, image: String, onComplete: (String) -> Unit, onError: (String) -> Unit) {
         withContext(Dispatchers.IO) {
             val lutFile = "lut.cube".also { saveLutFile(fileName = it, lut = lutCube.file_) }
             //TODO refactor this function to take input and output file names
             val outputFile = EDITED_IMAGE_FILE_NAME
-            apply3dLut(inputFile = image, lutFile = lutFile, outputFile = outputFile) {
-                scope.launch {
-                    onComplete(outputFile)
-                }
-            }
+            apply3dLut(
+                inputFile = image,
+                lutFile = lutFile,
+                outputFile = outputFile,
+                onComplete = { onComplete(outputFile) },
+                onError = onError)
         }
     }
 
