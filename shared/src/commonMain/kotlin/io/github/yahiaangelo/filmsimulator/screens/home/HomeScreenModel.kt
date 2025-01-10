@@ -4,12 +4,16 @@ import androidx.compose.ui.graphics.ImageBitmap
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import io.github.vinceglb.filekit.core.PlatformFile
+import io.github.vinceglb.filekit.core.extension
 import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.FilmRepository
+import io.github.yahiaangelo.filmsimulator.data.source.SettingsRepository
 import io.github.yahiaangelo.filmsimulator.data.source.toFavoriteLut
+import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.util.AppContext
 import io.github.yahiaangelo.filmsimulator.util.fixImageOrientation
+import io.github.yahiaangelo.filmsimulator.util.supportedImageExtensions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +29,7 @@ import util.saveImageFile
 import util.saveImageToGallery
 
 val homeScreenModule = module {
-    factory { HomeScreenModel(get()) }
+    factory { HomeScreenModel(get(), get()) }
 }
 
 /**
@@ -37,6 +41,7 @@ data class HomeUiState(
     val isLoading: Boolean = false,
     val loadingMessage: String = "",
     val showBottomSheet: BottomSheetState = BottomSheetState.HIDDEN,
+    val defaultPickerType: DefaultPickerType = DefaultPickerType.IMAGES,
     val filmLuts: List<FilmLut> = emptyList(),
     val favoriteLuts: List<FavoriteLut> = emptyList(),
     val userMessage: String? = null,
@@ -61,13 +66,14 @@ enum class BottomSheetState {
 /**
  * ViewModel for the Main Screen
  */
-data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
+data class HomeScreenModel(val repository: FilmRepository, val settingsRepository: SettingsRepository) : ScreenModel {
 
     private val _uiState: MutableStateFlow<HomeUiState> = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState
 
     init {
         refresh()
+        addSettingsListeners()
     }
     private fun updateUiState(update: (HomeUiState) -> HomeUiState) {
         _uiState.value = update(_uiState.value)
@@ -83,7 +89,7 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
                 repository.refresh()
                 val newFilmList = repository.getFilmsStream().first()
                 val newFavoriteList = repository.getFavoriteFilmsStream().first()
-                updateUiState { it.copy(filmLuts = newFilmList, favoriteLuts = newFavoriteList, userMessage = "Data refreshed successfully.") }
+                updateUiState { it.copy(filmLuts = newFilmList, favoriteLuts = newFavoriteList, defaultPickerType = settingsRepository.getSettings().defaultPicker, userMessage = "Data refreshed successfully.") }
             } catch (e: Exception) {
                 updateUiState { it.copy(userMessage = "Error refreshing data: ${e.message}") }
             } finally {
@@ -114,10 +120,14 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
     }
 
     fun onImagePickerResult(file: PlatformFile?) {
-        file?.let {
+        file?.let { platformFile ->
+            if (!supportedImageExtensions.contains(platformFile.extension)) {
+                updateUiState { it.copy(userMessage = "Unsupported image type.") }
+                return
+            }
             screenModelScope.launch {
-                saveImageFile(IMAGE_FILE_NAME, it.readBytes())
-                saveImageFile(EDITED_IMAGE_FILE_NAME, it.readBytes())
+                saveImageFile(IMAGE_FILE_NAME, platformFile.readBytes())
+                saveImageFile(EDITED_IMAGE_FILE_NAME, platformFile.readBytes())
                 fixImageOrientation(image = IMAGE_FILE_NAME)
                 _originalImage.emit(IMAGE_FILE_NAME)
                 _editedImage.emit(IMAGE_FILE_NAME)
@@ -195,6 +205,12 @@ data class HomeScreenModel(val repository: FilmRepository) : ScreenModel {
             } catch (e: Exception) {
                 updateUiState { it.copy(userMessage = "Error removing from favorites: ${e.message}") }
             }
+        }
+    }
+
+    private fun addSettingsListeners() {
+        settingsRepository.getSettings().defaultPickerListener { defaultPicker ->
+            updateUiState { it.copy(defaultPickerType = defaultPicker) }
         }
     }
 }

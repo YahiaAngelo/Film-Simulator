@@ -1,7 +1,7 @@
 package io.github.yahiaangelo.filmsimulator
 
 class AndroidPlatform : Platform {
-    override val name: String = "Android ${android.os.Build.VERSION.SDK_INT}"
+    override val name = PlatformName.ANDROID
 }
 
 actual fun getPlatform(): Platform = AndroidPlatform()

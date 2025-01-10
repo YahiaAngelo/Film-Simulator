@@ -78,10 +78,11 @@ import io.github.vinceglb.filekit.core.PickerType
 import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
+import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
+import io.github.yahiaangelo.filmsimulator.util.supportedImageExtensions
 import io.github.yahiaangelo.filmsimulator.view.AppScaffold
 import io.github.yahiaangelo.filmsimulator.view.ProgressDialog
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import okio.FileSystem
 import org.jetbrains.compose.resources.painterResource
@@ -104,7 +105,13 @@ data class HomeScreen(
         val vm = getScreenModel<HomeScreenModel>()
         val uiState by vm.uiState.collectAsState()
 
-        val singleImagePicker = rememberFilePickerLauncher(mode = PickerMode.Single, type = PickerType.Image, onResult = vm::onImagePickerResult)
+        val singleImagePicker = rememberFilePickerLauncher(
+            type = when(uiState.defaultPickerType) {
+                DefaultPickerType.IMAGES -> PickerType.Image
+                DefaultPickerType.FILES -> PickerType.File(supportedImageExtensions.toList())
+            }, mode = PickerMode.Single, onResult = vm::onImagePickerResult
+        )
+
 
         val homeScreenState = HomeUiState(
             image = uiState.image,

@@ -11,7 +11,7 @@ androidx-activityCompose = "1.9.3"
 kotlinxDatetime = "0.6.1"
 logging = "1.4.2"
 materialKolor = "1.4.0-rc03"
-multiplatformSettings = "1.1.1"
+multiplatformSettings = "1.2.0"
 nativeDriver = "2.0.1"
 runtime = "2.0.2"
 statelyCommon = "2.0.5"
@@ -59,6 +59,7 @@ multiplatform-settings = { module = "com.russhwolf:multiplatform-settings", vers
 multiplatform-settings-coroutines = { module = "com.russhwolf:multiplatform-settings-coroutines", version.ref = "multiplatformSettings" }
 multiplatform-settings-serialization = { module = "com.russhwolf:multiplatform-settings-serialization", version.ref = "multiplatformSettings" }
 multiplatform-settings-no-arg = { module = "com.russhwolf:multiplatform-settings-no-arg", version.ref = "multiplatformSettings" }
+multiplatform-settings-make-observable = { module = "com.russhwolf:multiplatform-settings-make-observable", version.ref = "multiplatformSettings" }
 native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "nativeDriver" }
 runtime = { module = "com.squareup.sqldelight:runtime", version.ref = "runtime" }
 stately-common = { module = "co.touchlab:stately-common", version.ref = "statelyCommon" }

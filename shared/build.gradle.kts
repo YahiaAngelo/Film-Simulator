@@ -92,6 +92,7 @@ kotlin {
             implementation(libs.multiplatform.settings.no.arg)
             implementation(libs.multiplatform.settings.serialization)
             implementation(libs.multiplatform.settings.coroutines)
+            implementation(libs.multiplatform.settings.make.observable)
             api(libs.image.loader)
             implementation(libs.coil.compose)
             implementation(libs.zoomimage.compose.coil3)
