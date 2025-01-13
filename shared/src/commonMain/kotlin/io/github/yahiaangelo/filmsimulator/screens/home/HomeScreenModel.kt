@@ -1,6 +1,5 @@
 package screens.home
 
-import androidx.compose.ui.graphics.ImageBitmap
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import io.github.vinceglb.filekit.core.PlatformFile
@@ -12,6 +11,7 @@ import io.github.yahiaangelo.filmsimulator.data.source.SettingsRepository
 import io.github.yahiaangelo.filmsimulator.data.source.toFavoriteLut
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.util.AppContext
+import io.github.yahiaangelo.filmsimulator.util.convertImageToJpeg
 import io.github.yahiaangelo.filmsimulator.util.fixImageOrientation
 import io.github.yahiaangelo.filmsimulator.util.supportedImageExtensions
 import kotlinx.coroutines.Dispatchers
@@ -140,6 +140,9 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
             screenModelScope.launch {
                 saveImageFile(IMAGE_FILE_NAME, platformFile.readBytes())
                 saveImageFile(EDITED_IMAGE_FILE_NAME, platformFile.readBytes())
+                if (arrayOf("heic", "heif").contains(platformFile.extension.lowercase())) {
+                    convertImageToJpeg(IMAGE_FILE_NAME)
+                }
                 fixImageOrientation(image = IMAGE_FILE_NAME)
                 _originalImage.emit(IMAGE_FILE_NAME)
                 _editedImage.emit(IMAGE_FILE_NAME)
