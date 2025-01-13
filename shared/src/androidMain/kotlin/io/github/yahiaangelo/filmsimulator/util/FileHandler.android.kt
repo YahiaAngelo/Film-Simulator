@@ -3,12 +3,9 @@ package util
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Environment
 import android.provider.MediaStore
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import io.github.yahiaangelo.filmsimulator.data.source.local.SettingsStorageImpl
 import io.github.yahiaangelo.filmsimulator.util.AppContext
 import kotlinx.coroutines.Dispatchers

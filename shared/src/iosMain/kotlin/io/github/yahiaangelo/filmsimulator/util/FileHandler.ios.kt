@@ -1,9 +1,6 @@
 package util
 
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import io.github.yahiaangelo.filmsimulator.util.AppContext
-import io.github.yahiaangelo.filmsimulator.util.readPixels
 import io.github.yahiaangelo.filmsimulator.util.toUIImage
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
@@ -11,8 +8,6 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
 import okio.FileSystem
 import okio.Path.Companion.toPath
-import org.jetbrains.skia.Image
-import platform.Photos.PHPhotoLibrary
 import platform.UIKit.UIImageWriteToSavedPhotosAlbum
 
 val systemTemporaryPath = FileSystem.SYSTEM_TEMPORARY_DIRECTORY

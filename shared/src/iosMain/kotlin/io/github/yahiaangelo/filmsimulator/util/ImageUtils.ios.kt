@@ -176,3 +176,5 @@ private fun UIImage.toByteArray(compressionQuality: Double): ByteArray {
         memcpy(this.refTo(0), jpegData.bytes, jpegData.length)
     }
 }
+
+actual suspend fun convertImageToJpeg(image: String) {}

@@ -21,7 +21,7 @@ peekaboo = "0.5.2"
 datastoreCore = "1.1.1"
 okio = "3.8.0"
 ktorVersion = "3.0.1"
-ffmpegKitMin = "6.0-2"
+ffmpegKitMin = "6.0"
 kotlinxCoroutinesCore = "1.8.0"
 lifecycleViewmodelKtx = "2.8.7"
 ui-tooling-preview = "1.6.0-rc01"
@@ -83,7 +83,7 @@ peekaboo-image-picker = { module = "io.github.onseok:peekaboo-image-picker", ver
 okio = {module = "com.squareup.okio:okio", version.ref = "okio"}
 androidx-datastore-core = { group = "androidx.datastore", name = "datastore-core", version.ref = "datastoreCore" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
-ffmpeg-kit-min = { module = "com.arthenica:ffmpeg-kit-min-gpl", version.ref = "ffmpegKitMin" }
+ffmpeg-kit-min = { module = "com.arthenica:ffmpeg-kit-min", version.ref = "ffmpegKitMin" }
 zoomimage-compose-coil3 = { module = "io.github.panpf.zoomimage:zoomimage-compose-coil3", version.ref = "zoomimageComposeCoil3" }
 
 [plugins]
