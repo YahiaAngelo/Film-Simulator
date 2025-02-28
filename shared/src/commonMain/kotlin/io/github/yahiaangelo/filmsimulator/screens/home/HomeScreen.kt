@@ -59,7 +59,6 @@ import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
@@ -236,7 +235,7 @@ data class HomeScreen(
                                     .fillMaxSize()
                                     .drawWithContent {
                                         // Record the content in the graphics layer for export
-                                        imageGraphicsLayer.record(size = IntSize(width = 3000, height = 3000)) {
+                                        imageGraphicsLayer.record {
                                             this@drawWithContent.drawContent()
                                         }
                                         // Draw the layer on the visible canvas
