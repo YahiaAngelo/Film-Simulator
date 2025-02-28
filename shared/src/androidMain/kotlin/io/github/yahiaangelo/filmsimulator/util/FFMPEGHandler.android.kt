@@ -27,3 +27,54 @@ actual suspend fun apply3dLut(inputFile: String, lutFile: String, outputFile: St
         }
     }
 }
+
+actual suspend fun addFilmGrain(
+    inputFile: String,
+    outputFile: String,
+    intensity: Float,
+    onComplete: () -> Unit,
+    onError: (String) -> Unit
+) {
+    val inputFileDir = "$systemTemporaryPath/$inputFile"
+    val outputFileDir = "$systemTemporaryPath/$outputFile"
+
+    deleteFile(outputFileDir)
+    withContext(Dispatchers.IO) {
+        FFmpegKit.executeAsync("-i $inputFileDir -vf noise=c0s=$intensity:c0f=t+u -q:v 1 $outputFileDir") { session ->
+            if (ReturnCode.isSuccess(session.returnCode)) {
+                // SUCCESS
+                onComplete()
+
+            } else if (ReturnCode.isCancel(session.returnCode)) {
+                // CANCEL
+                onError("ffmpeg canceled by user")
+            } else {
+                // FAILURE
+                onError("ffmpeg failed, unsupported file format")
+            }
+        }
+    }
+}
+
+actual suspend fun applyFilters(
+    command: String,
+    onComplete: () -> Unit,
+    onError: (String) -> Unit
+) {
+
+    withContext(Dispatchers.IO) {
+        FFmpegKit.executeAsync(command) { session ->
+            if (ReturnCode.isSuccess(session?.returnCode)) {
+                // SUCCESS
+                onComplete()
+
+            } else if (ReturnCode.isCancel(session?.returnCode)) {
+                // CANCEL
+                onError("ffmpeg canceled by user")
+            } else {
+                // FAILURE
+                onError("ffmpeg failed, unsupported file format")
+            }
+        }
+    }
+}

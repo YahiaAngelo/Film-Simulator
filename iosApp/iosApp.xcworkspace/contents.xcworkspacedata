@@ -10,4 +10,14 @@
    <FileRef
       location = "group:iosApp.xcodeproj">
    </FileRef>
+   <Group
+      location = "group:Kotlin Debug"
+      name = "Kotlin Debug">
+      <FileRef
+         location = "container:../shared/src/commonMain">
+      </FileRef>
+      <FileRef
+         location = "container:../shared/src/iosMain">
+      </FileRef>
+   </Group>
 </Workspace>

@@ -1,4 +1,3 @@
-import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -43,7 +42,7 @@ kotlin {
             baseName = "shared"
             isStatic = true
         }
-        pod("ffmpeg-kit-ios-min") {
+        pod("ffmpeg-kit-ios-full-gpl") {
             moduleName = "ffmpegkit"
             version = "6.0"
             extraOpts = listOf("-compiler-option", "-fmodules")
@@ -62,7 +61,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.koin.android)
             implementation(libs.android.driver)
-            implementation (libs.ffmpeg.kit.min)
+            implementation (libs.ffmpeg.kit.full.gpl)
         }
 
         commonMain.dependencies {
@@ -100,6 +99,7 @@ kotlin {
             implementation(libs.filekit.compose)
             implementation(libs.kotlinx.datetime)
             implementation(libs.autolinktext)
+            implementation(libs.skiko)
             //api(libs.image.loader.extension.blur)
         }
 

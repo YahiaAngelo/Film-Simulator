@@ -9,7 +9,7 @@ Pod::Spec.new do |spec|
     spec.vendored_frameworks      = 'build/cocoapods/framework/shared.framework'
     spec.libraries                = 'c++'
     spec.ios.deployment_target    = '16.0'
-    spec.dependency 'ffmpeg-kit-ios-min', '6.0'
+    spec.dependency 'ffmpeg-kit-ios-full-gpl', '6.0'
                 
     if !Dir.exist?('build/cocoapods/framework/shared.framework') || Dir.empty?('build/cocoapods/framework/shared.framework')
         raise "

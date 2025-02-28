@@ -1,5 +1,6 @@
 package screens.home
 
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import io.github.vinceglb.filekit.core.PlatformFile
@@ -9,10 +10,12 @@ import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.FilmRepository
 import io.github.yahiaangelo.filmsimulator.data.source.SettingsRepository
 import io.github.yahiaangelo.filmsimulator.data.source.toFavoriteLut
+import io.github.yahiaangelo.filmsimulator.image.ImageAdjustments
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.util.AppContext
 import io.github.yahiaangelo.filmsimulator.util.convertImageToJpeg
 import io.github.yahiaangelo.filmsimulator.util.fixImageOrientation
+import io.github.yahiaangelo.filmsimulator.util.readPixels
 import io.github.yahiaangelo.filmsimulator.util.supportedImageExtensions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -20,6 +23,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import org.koin.dsl.module
@@ -27,6 +32,8 @@ import util.EDITED_IMAGE_FILE_NAME
 import util.IMAGE_FILE_NAME
 import util.saveImageFile
 import util.saveImageToGallery
+import util.saveLutFile
+import kotlin.reflect.KClass
 
 val homeScreenModule = module {
     factory { HomeScreenModel(get(), get()) }
@@ -45,6 +52,7 @@ data class HomeUiState(
     val filmLuts: List<FilmLut> = emptyList(),
     val favoriteLuts: List<FavoriteLut> = emptyList(),
     val userMessage: String? = null,
+    val imageAdjustments: ImageAdjustments = ImageAdjustments(),
     val onRefresh: () -> Unit = {},
     val onImageChooseClick: () -> Unit = {},
     val onFilmBoxClick: () -> Unit = {},
@@ -56,7 +64,15 @@ data class HomeUiState(
     val onImageExportClick: () -> Unit = {},
     val snackbarMessageShown: () -> Unit = {},
     val onAddFavoriteClick: (FilmLut) -> Unit = {},
-    val onRemoveFavoriteClick: (FilmLut) -> Unit = {}
+    val onRemoveFavoriteClick: (FilmLut) -> Unit = {},
+    // Individual adjustment handlers
+    val onContrastChange: (Float) -> Unit = {},
+    val onBrightnessChange: (Float) -> Unit = {},
+    val onSaturationChange: (Float) -> Unit = {},
+    val onTemperatureChange: (Float) -> Unit = {},
+    val onExposureChange: (Float) -> Unit = {},
+    val onGrainChange: (Float) -> Unit = {},
+    val onChromaticAberrationChange: (Float) -> Unit = {},
 )
 
 enum class BottomSheetState {
@@ -75,12 +91,16 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
         refresh()
         addSettingsListeners()
     }
+
     private fun updateUiState(update: (HomeUiState) -> HomeUiState) {
         _uiState.value = update(_uiState.value)
     }
 
     private val _originalImage: MutableStateFlow<String?> = MutableStateFlow(null)
     private val _editedImage: MutableStateFlow<String?> = MutableStateFlow(null)
+    private val _currentAdjustments: MutableStateFlow<ImageAdjustments> = MutableStateFlow(ImageAdjustments())
+    private var _imageGraphicsLayer: GraphicsLayer? = null
+
 
     fun refresh() {
         screenModelScope.launch {
@@ -94,6 +114,55 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
                 updateUiState { it.copy(userMessage = "Error refreshing data: ${e.message}") }
             } finally {
                 updateUiState { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+    fun setGraphicsLayer(graphicsLayer: GraphicsLayer) {
+        _imageGraphicsLayer = graphicsLayer
+    }
+
+    // Image adjustment methods
+    fun adjustContrast(value: Float) {
+        updateImageAdjustment { it.copy(contrast = value) }
+    }
+
+    fun adjustBrightness(value: Float) {
+        updateImageAdjustment { it.copy(brightness = value) }
+    }
+
+    fun adjustSaturation(value: Float) {
+        updateImageAdjustment { it.copy(saturation = value) }
+    }
+
+    fun adjustTemperature(value: Float) {
+        updateImageAdjustment { it.copy(temperature = value) }
+    }
+
+    fun adjustExposure(value: Float) {
+        updateImageAdjustment { it.copy(exposure = value) }
+    }
+
+    fun addGrain(value: Float) {
+        updateImageAdjustment { it.copy(grain = value) }
+    }
+
+    fun addChromaticAberration(value: Float) {
+        updateImageAdjustment { it.copy(chromaticAberration = value) }
+    }
+
+    private fun updateImageAdjustment(update: (ImageAdjustments) -> ImageAdjustments) {
+        _currentAdjustments.value = update(_currentAdjustments.value)
+        updateUiState { it.copy(imageAdjustments = _currentAdjustments.value) }
+        applyAdjustments()
+    }
+
+    private fun applyAdjustments() {
+        _editedImage.value?.let { imagePath ->
+            screenModelScope.launch {
+                // Here you would apply actual image processing if needed
+                // For now we just update the UI since we're using shaders
+                //emitImage(imagePath)
             }
         }
     }
@@ -146,6 +215,11 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
                 fixImageOrientation(image = IMAGE_FILE_NAME)
                 _originalImage.emit(IMAGE_FILE_NAME)
                 _editedImage.emit(IMAGE_FILE_NAME)
+
+                // Reset adjustments when new image is loaded
+                _currentAdjustments.emit(ImageAdjustments())
+                updateUiState { it.copy(imageAdjustments = ImageAdjustments()) }
+
                 emitImage(IMAGE_FILE_NAME)
                 _uiState.value.selectedFilm?.let { selectFilmLut(it) }
             }
@@ -176,24 +250,44 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
     }
 
     fun resetImage() {
-        _originalImage.value?.let {originalImage ->
+        _originalImage.value?.let { originalImage ->
             updateUiState { it.copy(selectedFilm = null) }
+            // Reset all adjustments
+            _currentAdjustments.value = ImageAdjustments()
+            updateUiState { it.copy(imageAdjustments = ImageAdjustments()) }
             emitImage(originalImage)
         }
     }
 
     fun exportImage() {
-        _editedImage.value?.let {
+        val graphicsLayer = _imageGraphicsLayer
+        _editedImage.value?.let { imagePath ->
+            if (graphicsLayer == null) {
+                updateUiState { it.copy(userMessage = "Cannot export image with effects. Please try again.") }
+                return
+            }
+
             screenModelScope.launch {
                 try {
                     updateUiState {
                         it.copy(
                             isLoading = true,
-                            loadingMessage = "Exporting image..."
+                            loadingMessage = "Capturing image with effects..."
                         )
                     }
+
+                    // Capture the current state of the image with all effects applied
+                    val bitmap = graphicsLayer.toImageBitmap()
+
+                    updateUiState { it.copy(loadingMessage = "Saving image...") }
+
+                    // Save the bitmap to the edited image file
+                    saveImageFile(EDITED_IMAGE_FILE_NAME, bitmap.readPixels())
+
+                    // Now save to gallery
                     saveImageToGallery(EDITED_IMAGE_FILE_NAME, appContext = AppContext)
-                    updateUiState { it.copy(userMessage = "Image exported successfully.") }
+
+                    updateUiState { it.copy(userMessage = "Image exported successfully with all effects applied.") }
                 } catch (e: Exception) {
                     updateUiState { it.copy(userMessage = "Error exporting image: ${e.message}") }
                 } finally {
@@ -201,7 +295,9 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
                 }
             }
         } ?: updateUiState { it.copy(userMessage = "Please choose an image first.") }
+
     }
+
     fun addFavoriteFilm(filmLut: FilmLut) {
         screenModelScope.launch {
             try {
@@ -212,6 +308,7 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
             }
         }
     }
+
     fun removeFavoriteFilm(filmLut: FilmLut) {
         screenModelScope.launch {
             try {

@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Divider
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.OutlinedTextField
@@ -38,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -50,9 +53,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
@@ -78,11 +85,22 @@ import io.github.vinceglb.filekit.core.PickerType
 import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
+import io.github.yahiaangelo.filmsimulator.image.ImageWithAdjustments
+import io.github.yahiaangelo.filmsimulator.image.modifiers.brightnessShader
+import io.github.yahiaangelo.filmsimulator.image.modifiers.chromaticAberrationShader
+import io.github.yahiaangelo.filmsimulator.image.modifiers.contrastShader
+import io.github.yahiaangelo.filmsimulator.image.modifiers.exposureShader
+import io.github.yahiaangelo.filmsimulator.image.modifiers.grainShader
+import io.github.yahiaangelo.filmsimulator.image.modifiers.saturationShader
+import io.github.yahiaangelo.filmsimulator.image.modifiers.temperatureShader
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
 import io.github.yahiaangelo.filmsimulator.util.supportedImageExtensions
 import io.github.yahiaangelo.filmsimulator.view.AppScaffold
+import io.github.yahiaangelo.filmsimulator.view.CenteredSettingsSlider
+import io.github.yahiaangelo.filmsimulator.view.CenteredSlider
 import io.github.yahiaangelo.filmsimulator.view.ProgressDialog
+import io.github.yahiaangelo.filmsimulator.view.SettingsSlider
 import kotlinx.coroutines.launch
 import okio.FileSystem
 import org.jetbrains.compose.resources.painterResource
@@ -91,7 +109,7 @@ import org.jetbrains.compose.resources.stringResource
 
 data class HomeScreen(
     val userMessage: String = ""
-): Screen {
+) : Screen {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -106,7 +124,7 @@ data class HomeScreen(
         val uiState by vm.uiState.collectAsState()
 
         val singleImagePicker = rememberFilePickerLauncher(
-            type = when(uiState.defaultPickerType) {
+            type = when (uiState.defaultPickerType) {
                 DefaultPickerType.IMAGES -> PickerType.Image
                 DefaultPickerType.FILES -> PickerType.File(supportedImageExtensions.toList())
             }, mode = PickerMode.Single, onResult = vm::onImagePickerResult
@@ -122,6 +140,7 @@ data class HomeScreen(
             filmLuts = uiState.filmLuts,
             favoriteLuts = uiState.favoriteLuts,
             userMessage = uiState.userMessage,
+            imageAdjustments = uiState.imageAdjustments,
             onRefresh = vm::refresh,
             onImageChooseClick = singleImagePicker::launch,
             onFilmBoxClick = vm::showFilmLutsBottomSheet,
@@ -133,7 +152,15 @@ data class HomeScreen(
             onImageExportClick = vm::exportImage,
             snackbarMessageShown = vm::snackbarMessageShown,
             onAddFavoriteClick = vm::addFavoriteFilm,
-            onRemoveFavoriteClick = vm::removeFavoriteFilm
+            onRemoveFavoriteClick = vm::removeFavoriteFilm,
+            // Image adjustment handlers
+            onContrastChange = vm::adjustContrast,
+            onBrightnessChange = vm::adjustBrightness,
+            onSaturationChange = vm::adjustSaturation,
+            onTemperatureChange = vm::adjustTemperature,
+            onExposureChange = vm::adjustExposure,
+            onGrainChange = vm::addGrain,
+            onChromaticAberrationChange = vm::addChromaticAberration,
         )
 
         AppScaffold(
@@ -146,6 +173,7 @@ data class HomeScreen(
         ) { innerPadding ->
             HomeContent(
                 state = homeScreenState,
+                vm = vm,
                 modifier = Modifier.padding(innerPadding)
             )
         }
@@ -178,6 +206,7 @@ data class HomeScreen(
     @Composable
     private fun HomeContent(
         state: HomeUiState,
+        vm: HomeScreenModel,
         modifier: Modifier = Modifier
     ) {
         val zoomState = rememberCoilZoomState()
@@ -196,18 +225,50 @@ data class HomeScreen(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         state.image?.let {
-                            CoilZoomAsyncImage(
-                                modifier = Modifier.fillMaxSize(),
-                                zoomState = zoomState,
-                                model = ImageRequest.Builder(LocalPlatformContext.current)
-                                    .data("${FileSystem.SYSTEM_TEMPORARY_DIRECTORY}/${it.substringBefore("?")}")
-                                    .memoryCacheKey(it)
-                                    .diskCacheKey(it)
-                                    .diskCachePolicy(CachePolicy.DISABLED)
-                                    .build(),
-                                contentDescription = null,
-                                scrollBar = null
-                            )
+                            // Remember the graphics layer
+                            val imageGraphicsLayer = rememberGraphicsLayer()
+                            val scope = rememberCoroutineScope()
+
+                            // Wrap the image with adjustments
+                            ImageWithAdjustments(
+                                adjustments = state.imageAdjustments,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .drawWithContent {
+                                        // Record the content in the graphics layer for export
+                                        imageGraphicsLayer.record(size = IntSize(width = 3000, height = 3000)) {
+                                            this@drawWithContent.drawContent()
+                                        }
+                                        // Draw the layer on the visible canvas
+                                        drawLayer(imageGraphicsLayer)
+                                    },
+                                applyModifiers = true
+                            ) {
+                                CoilZoomAsyncImage(
+                                    modifier = Modifier.fillMaxSize(),
+                                    zoomState = zoomState,
+                                    model = ImageRequest.Builder(LocalPlatformContext.current)
+                                        .data(
+                                            "${FileSystem.SYSTEM_TEMPORARY_DIRECTORY}/${
+                                                it.substringBefore(
+                                                    "?"
+                                                )
+                                            }"
+                                        )
+                                        .memoryCacheKey(it)
+                                        .diskCacheKey(it)
+                                        .diskCachePolicy(CachePolicy.DISABLED)
+                                        .build(),
+                                    contentDescription = null,
+                                    scrollBar = null
+                                )
+                            }
+
+                            // Store a reference to the graphics layer for export
+                            LaunchedEffect(imageGraphicsLayer) {
+                                vm.setGraphicsLayer(imageGraphicsLayer)
+                            }
+
                         } ?: IconButton(
                             modifier = Modifier.align(Alignment.Center).size(150.dp),
                             onClick = state.onImageChooseClick
@@ -216,7 +277,8 @@ data class HomeScreen(
                                 Icon(
                                     painter = painterResource(Res.drawable.ic_image_add_24),
                                     contentDescription = null,
-                                    modifier = Modifier.size(65.dp, 65.dp).align(Alignment.CenterHorizontally)
+                                    modifier = Modifier.size(65.dp, 65.dp)
+                                        .align(Alignment.CenterHorizontally)
                                 )
                                 Text(
                                     text = stringResource(Res.string.select_image),
@@ -228,14 +290,79 @@ data class HomeScreen(
                     }
                 }
             }
-            Spacer(modifier = Modifier.size(23.dp))
-            Divider(modifier = Modifier.padding(28.dp, 0.dp))
-            Spacer(modifier = Modifier.size(23.dp))
-            FilmLutBox(
-                modifier = Modifier.fillMaxWidth(),
-                selectedFilm = state.selectedFilm,
-                onFilmBoxClick = state.onFilmBoxClick,
-            )
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .weight(weight = 1f, fill = false)
+            ) {
+                Spacer(modifier = Modifier.size(23.dp))
+                Divider(modifier = Modifier.padding(28.dp, 0.dp))
+                Spacer(modifier = Modifier.size(23.dp))
+                FilmLutBox(
+                    modifier = Modifier.fillMaxWidth(),
+                    selectedFilm = state.selectedFilm,
+                    onFilmBoxClick = state.onFilmBoxClick,
+                )
+                Spacer(modifier = Modifier.size(16.dp))
+
+                // Image adjustment sliders
+                CenteredSettingsSlider(
+                    name = "Contrast",
+                    value = state.imageAdjustments.contrast,
+                    onValueChange = state.onContrastChange,
+                    range = -10f..10f,
+                    steps = 1
+                )
+
+                CenteredSettingsSlider(
+                    name = "Brightness",
+                    value = state.imageAdjustments.brightness,
+                    onValueChange = state.onBrightnessChange,
+                    range = -10f..10f,
+                    steps = 1
+                )
+
+                CenteredSettingsSlider(
+                    name = "Saturation",
+                    value = state.imageAdjustments.saturation,
+                    onValueChange = state.onSaturationChange,
+                    range = -10f..10f,
+                    steps = 1
+                )
+
+                CenteredSettingsSlider(
+                    name = "Temperature",
+                    value = state.imageAdjustments.temperature,
+                    onValueChange = state.onTemperatureChange,
+                    range = -10f..10f,
+                    steps = 1
+                )
+
+                CenteredSettingsSlider(
+                    name = "Exposure",
+                    value = state.imageAdjustments.exposure,
+                    onValueChange = state.onExposureChange,
+                    range = -20f..20f,
+                    steps = 1
+                )
+
+                SettingsSlider(
+                    name = "Grain",
+                    value = state.imageAdjustments.grain,
+                    onValueChange = state.onGrainChange,
+                    range = 0f..100f,
+                    steps = 10
+                )
+
+                SettingsSlider(
+                    name = "Chromatic Aberration",
+                    value = state.imageAdjustments.chromaticAberration,
+                    onValueChange = state.onChromaticAberrationChange,
+                    range = 0f..10f,
+                    steps = 10
+                )
+            }
+
         }
     }
 
@@ -262,9 +389,13 @@ data class HomeScreen(
                         isFavorite = state.favoriteLuts.any { it.name == state.selectedFilm?.name },
                         onFavoriteClick = {
                             if (state.favoriteLuts.any { it.name == state.selectedFilm?.name }) {
-                                state.onRemoveFavoriteClick(state.selectedFilm ?: state.filmLuts.first())
+                                state.onRemoveFavoriteClick(
+                                    state.selectedFilm ?: state.filmLuts.first()
+                                )
                             } else {
-                                state.onAddFavoriteClick(state.selectedFilm ?: state.filmLuts.first())
+                                state.onAddFavoriteClick(
+                                    state.selectedFilm ?: state.filmLuts.first()
+                                )
                             }
                         }
                     )
@@ -288,7 +419,11 @@ data class HomeScreen(
 
 
     @Composable
-    private fun FilmLutBox(modifier: Modifier = Modifier, selectedFilm: FilmLut?, onFilmBoxClick: () -> Unit) {
+    private fun FilmLutBox(
+        modifier: Modifier = Modifier,
+        selectedFilm: FilmLut?,
+        onFilmBoxClick: () -> Unit
+    ) {
         Box(modifier = modifier) {
             OutlinedCard(
                 modifier = Modifier.align(Alignment.Center).fillMaxWidth().height(80.dp),
@@ -301,12 +436,14 @@ data class HomeScreen(
             ) {
 
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = stringResource(Res.string.film),
+                    Text(
+                        text = stringResource(Res.string.film),
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier.padding(horizontal = 0.dp, vertical = 2.dp)
                     )
 
-                    Text(text = selectedFilm?.name ?: stringResource(Res.string.select_your_film),
+                    Text(
+                        text = selectedFilm?.name ?: stringResource(Res.string.select_your_film),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 0.dp, vertical = 2.dp)
                     )
@@ -389,7 +526,6 @@ data class HomeScreen(
     }
 
 
-
     @Composable
     fun CategoryHeader(category: String) {
         Surface(
@@ -417,13 +553,17 @@ data class HomeScreen(
         onFavoriteClick: () -> Unit
     ) {
         val isSelected = film == selectedFilm
-        val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
+        val backgroundColor =
+            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
 
         Surface(
             color = backgroundColor,
             onClick = { onItemClick(film) }
         ) {
-            Row(modifier = Modifier.padding(vertical = 12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.padding(vertical = 12.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Image(
                     painter = rememberImagePainter(GITHUB_BASE_URL + film.image_url),
                     contentDescription = film.name,
@@ -444,6 +584,7 @@ data class HomeScreen(
             }
         }
     }
+
 
 }
 
