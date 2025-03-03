@@ -14,6 +14,7 @@ materialKolor = "1.4.0-rc03"
 multiplatformSettings = "1.2.0"
 nativeDriver = "2.0.1"
 runtime = "2.0.2"
+skiko = "0.8.25"
 statelyCommon = "2.0.5"
 voyager = "1.0.0"
 koin = "4.0.0"
@@ -21,7 +22,7 @@ peekaboo = "0.5.2"
 datastoreCore = "1.1.1"
 okio = "3.8.0"
 ktorVersion = "3.0.1"
-ffmpegKitMin = "6.0"
+ffmpegKit = "6.0"
 kotlinxCoroutinesCore = "1.8.0"
 lifecycleViewmodelKtx = "2.8.7"
 ui-tooling-preview = "1.6.0-rc01"
@@ -62,6 +63,7 @@ multiplatform-settings-no-arg = { module = "com.russhwolf:multiplatform-settings
 multiplatform-settings-make-observable = { module = "com.russhwolf:multiplatform-settings-make-observable", version.ref = "multiplatformSettings" }
 native-driver = { module = "app.cash.sqldelight:native-driver", version.ref = "nativeDriver" }
 runtime = { module = "com.squareup.sqldelight:runtime", version.ref = "runtime" }
+skiko = { module = "org.jetbrains.skiko:skiko", version.ref = "skiko" }
 stately-common = { module = "co.touchlab:stately-common", version.ref = "statelyCommon" }
 voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyager" }
 voyager-screenModel = { module = "cafe.adriel.voyager:voyager-screenmodel", version.ref = "voyager" }
@@ -83,7 +85,7 @@ peekaboo-image-picker = { module = "io.github.onseok:peekaboo-image-picker", ver
 okio = {module = "com.squareup.okio:okio", version.ref = "okio"}
 androidx-datastore-core = { group = "androidx.datastore", name = "datastore-core", version.ref = "datastoreCore" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
-ffmpeg-kit-min = { module = "com.arthenica:ffmpeg-kit-min", version.ref = "ffmpegKitMin" }
+ffmpeg-kit-min = { module = "com.arthenica:ffmpeg-kit-min", version.ref = "ffmpegKit" }
 zoomimage-compose-coil3 = { module = "io.github.panpf.zoomimage:zoomimage-compose-coil3", version.ref = "zoomimageComposeCoil3" }
 
 [plugins]

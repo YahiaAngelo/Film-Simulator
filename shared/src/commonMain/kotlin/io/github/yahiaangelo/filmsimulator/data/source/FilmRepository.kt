@@ -32,6 +32,8 @@ interface FilmRepository {
 
     suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, image: String, onComplete: (String) -> Unit, onError: (String) -> Unit)
 
+    suspend fun addFilmGrain(scope: CoroutineScope, image: String, intensity: Float, onComplete: (String) -> Unit, onError: (String) -> Unit)
+
     // Methods for handling favorite LUTs
     fun getFavoriteFilmsStream(): Flow<List<FavoriteLut>>
 

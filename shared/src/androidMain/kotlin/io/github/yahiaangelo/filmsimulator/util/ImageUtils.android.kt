@@ -31,6 +31,7 @@ actual suspend fun addGrain(
        // Create a mutable copy of the bitmap to modify
        val processedBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
 
+
        // Loop through the pixels
        for (x in 0 until width) {
            for (y in 0 until height) {

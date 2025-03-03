@@ -15,7 +15,7 @@ import okio.Path.Companion.toPath
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import java.io.IOException
 
-val systemTemporaryPath = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
+actual val systemTemporaryPath = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
 
 actual fun saveImageFile(fileName: String, image: ByteArray) {
     val path = "${systemTemporaryPath/fileName}".toPath()

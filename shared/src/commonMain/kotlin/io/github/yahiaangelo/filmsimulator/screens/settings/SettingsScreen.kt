@@ -57,6 +57,7 @@ import film_simulator.shared.generated.resources.settings
 import film_simulator.shared.generated.resources.source_code
 import io.github.yahiaangelo.filmsimulator.util.AppContext
 import io.github.yahiaangelo.filmsimulator.util.Platform
+import io.github.yahiaangelo.filmsimulator.view.SettingsSlider
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.autolinktext.rememberAutoLinkText
 
@@ -151,41 +152,6 @@ class SettingsScreen : Screen {
         DefaultPickerDialog(showDefaultPickerDialog.value, onItemClick = vm::updateDefaultPickerSettings) {
             showDefaultPickerDialog.value = false
         }
-    }
-
-    @OptIn(ExperimentalMaterialApi::class)
-    @Composable
-    private fun SettingsSlider(
-        name: String,
-        value: Float,
-        steps: Int,
-        range: ClosedFloatingPointRange<Float>,
-        onValueChange: (Float) -> Unit
-    ) {
-
-        ListItem {
-            Column {
-                Text(
-                    style = MaterialTheme.typography.labelLarge,
-                    text = name
-                )
-                Slider(
-                    value = value,
-                    onValueChange = {
-                        onValueChange(it)
-                    },
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.secondary,
-                        activeTrackColor = MaterialTheme.colorScheme.secondary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.secondaryContainer,
-                    ),
-                    steps = steps,
-                    valueRange = range
-                )
-                Text(text = value.toInt().toString())
-            }
-        }
-
     }
 
     @OptIn(ExperimentalMaterialApi::class)
