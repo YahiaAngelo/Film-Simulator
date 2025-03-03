@@ -42,7 +42,7 @@ kotlin {
             baseName = "shared"
             isStatic = true
         }
-        pod("ffmpeg-kit-ios-full-gpl") {
+        pod("ffmpeg-kit-ios-min") {
             moduleName = "ffmpegkit"
             version = "6.0"
             extraOpts = listOf("-compiler-option", "-fmodules")
@@ -61,7 +61,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.koin.android)
             implementation(libs.android.driver)
-            implementation (libs.ffmpeg.kit.full.gpl)
+            implementation (libs.ffmpeg.kit.min)
         }
 
         commonMain.dependencies {

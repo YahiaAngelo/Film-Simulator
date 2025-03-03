@@ -14,7 +14,7 @@ materialKolor = "1.4.0-rc03"
 multiplatformSettings = "1.2.0"
 nativeDriver = "2.0.1"
 runtime = "2.0.2"
-skiko = "0.8.19"
+skiko = "0.8.25"
 statelyCommon = "2.0.5"
 voyager = "1.0.0"
 koin = "4.0.0"
@@ -85,7 +85,7 @@ peekaboo-image-picker = { module = "io.github.onseok:peekaboo-image-picker", ver
 okio = {module = "com.squareup.okio:okio", version.ref = "okio"}
 androidx-datastore-core = { group = "androidx.datastore", name = "datastore-core", version.ref = "datastoreCore" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
-ffmpeg-kit-full-gpl = { module = "com.arthenica:ffmpeg-kit-full-gpl", version.ref = "ffmpegKit" }
+ffmpeg-kit-min = { module = "com.arthenica:ffmpeg-kit-min", version.ref = "ffmpegKit" }
 zoomimage-compose-coil3 = { module = "io.github.panpf.zoomimage:zoomimage-compose-coil3", version.ref = "zoomimageComposeCoil3" }
 
 [plugins]

@@ -85,19 +85,11 @@ import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
 import io.github.yahiaangelo.filmsimulator.image.ImageWithAdjustments
-import io.github.yahiaangelo.filmsimulator.image.modifiers.brightnessShader
-import io.github.yahiaangelo.filmsimulator.image.modifiers.chromaticAberrationShader
-import io.github.yahiaangelo.filmsimulator.image.modifiers.contrastShader
-import io.github.yahiaangelo.filmsimulator.image.modifiers.exposureShader
-import io.github.yahiaangelo.filmsimulator.image.modifiers.grainShader
-import io.github.yahiaangelo.filmsimulator.image.modifiers.saturationShader
-import io.github.yahiaangelo.filmsimulator.image.modifiers.temperatureShader
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
 import io.github.yahiaangelo.filmsimulator.util.supportedImageExtensions
 import io.github.yahiaangelo.filmsimulator.view.AppScaffold
 import io.github.yahiaangelo.filmsimulator.view.CenteredSettingsSlider
-import io.github.yahiaangelo.filmsimulator.view.CenteredSlider
 import io.github.yahiaangelo.filmsimulator.view.ProgressDialog
 import io.github.yahiaangelo.filmsimulator.view.SettingsSlider
 import kotlinx.coroutines.launch
@@ -140,6 +132,7 @@ data class HomeScreen(
             favoriteLuts = uiState.favoriteLuts,
             userMessage = uiState.userMessage,
             imageAdjustments = uiState.imageAdjustments,
+            showAdjustments = uiState.showAdjustments,
             onRefresh = vm::refresh,
             onImageChooseClick = singleImagePicker::launch,
             onFilmBoxClick = vm::showFilmLutsBottomSheet,
@@ -172,7 +165,6 @@ data class HomeScreen(
         ) { innerPadding ->
             HomeContent(
                 state = homeScreenState,
-                vm = vm,
                 modifier = Modifier.padding(innerPadding)
             )
         }
@@ -205,7 +197,6 @@ data class HomeScreen(
     @Composable
     private fun HomeContent(
         state: HomeUiState,
-        vm: HomeScreenModel,
         modifier: Modifier = Modifier
     ) {
         val zoomState = rememberCoilZoomState()
@@ -224,24 +215,12 @@ data class HomeScreen(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         state.image?.let {
-                            // Remember the graphics layer
-                            val imageGraphicsLayer = rememberGraphicsLayer()
-                            val scope = rememberCoroutineScope()
-
                             // Wrap the image with adjustments
                             ImageWithAdjustments(
                                 adjustments = state.imageAdjustments,
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .drawWithContent {
-                                        // Record the content in the graphics layer for export
-                                        imageGraphicsLayer.record {
-                                            this@drawWithContent.drawContent()
-                                        }
-                                        // Draw the layer on the visible canvas
-                                        drawLayer(imageGraphicsLayer)
-                                    },
-                                applyModifiers = true
+                                    .fillMaxSize(),
+                                applyModifiers = state.showAdjustments
                             ) {
                                 CoilZoomAsyncImage(
                                     modifier = Modifier.fillMaxSize(),
@@ -261,11 +240,6 @@ data class HomeScreen(
                                     contentDescription = null,
                                     scrollBar = null
                                 )
-                            }
-
-                            // Store a reference to the graphics layer for export
-                            LaunchedEffect(imageGraphicsLayer) {
-                                vm.setGraphicsLayer(imageGraphicsLayer)
                             }
 
                         } ?: IconButton(
@@ -306,10 +280,24 @@ data class HomeScreen(
 
                 // Image adjustment sliders
                 CenteredSettingsSlider(
+                    name = "Exposure",
+                    value = state.imageAdjustments.exposure,
+                    onValueChange = state.onExposureChange,
+                    range = -20f..20f,
+                    steps = 1
+                )
+                CenteredSettingsSlider(
+                    name = "Temperature",
+                    value = state.imageAdjustments.temperature,
+                    onValueChange = state.onTemperatureChange,
+                    range = -20f..20f,
+                    steps = 1
+                )
+                CenteredSettingsSlider(
                     name = "Contrast",
                     value = state.imageAdjustments.contrast,
                     onValueChange = state.onContrastChange,
-                    range = -10f..10f,
+                    range = -20f..20f,
                     steps = 1
                 )
 
@@ -317,7 +305,7 @@ data class HomeScreen(
                     name = "Brightness",
                     value = state.imageAdjustments.brightness,
                     onValueChange = state.onBrightnessChange,
-                    range = -10f..10f,
+                    range = -20f..20f,
                     steps = 1
                 )
 
@@ -325,22 +313,6 @@ data class HomeScreen(
                     name = "Saturation",
                     value = state.imageAdjustments.saturation,
                     onValueChange = state.onSaturationChange,
-                    range = -10f..10f,
-                    steps = 1
-                )
-
-                CenteredSettingsSlider(
-                    name = "Temperature",
-                    value = state.imageAdjustments.temperature,
-                    onValueChange = state.onTemperatureChange,
-                    range = -10f..10f,
-                    steps = 1
-                )
-
-                CenteredSettingsSlider(
-                    name = "Exposure",
-                    value = state.imageAdjustments.exposure,
-                    onValueChange = state.onExposureChange,
                     range = -20f..20f,
                     steps = 1
                 )
@@ -349,8 +321,8 @@ data class HomeScreen(
                     name = "Grain",
                     value = state.imageAdjustments.grain,
                     onValueChange = state.onGrainChange,
-                    range = 0f..100f,
-                    steps = 10
+                    range = 0f..10f,
+                    steps = 20
                 )
 
                 SettingsSlider(
