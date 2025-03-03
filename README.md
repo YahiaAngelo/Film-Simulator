@@ -15,6 +15,7 @@ FilmSimulator is a cross-platform mobile application developed using Kotlin Mult
 
 ## Features
 - Apply film-like LUTs to any image.
+- Apply image adjustments like brightness, contrast, saturation, and more.
 - Simple and intuitive UI built with Compose UI and Material3.
 - Cross-platform functionality on both Android and iOS devices.
 
@@ -24,6 +25,7 @@ This project leverages the following technologies and libraries:
 - **Material3**: Implements Material Design 3 components for a modern, cohesive look and feel.
 - **Compose Resources**: Helps manage resources in a multiplatform environment.
 - **FFMPEG-Kit**: Used to apply Lut files to images.
+- **Skiko**: Used for rendering images and applying RuntimeShaders.
 - **SQLDelight**: Used for local database.
 - **Ktor**: Utilized for network operations.
 - **Voyager Navigation**: Manages navigation in the app.
