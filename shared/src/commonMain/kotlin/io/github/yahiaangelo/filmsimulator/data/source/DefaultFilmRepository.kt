@@ -95,6 +95,12 @@ internal class DefaultFilmRepository(
         }, onError = onError)
     }
 
+    override suspend fun addFilmGrain(scope: CoroutineScope, image: String, intensity: Float, onComplete: (String) -> Unit, onError: (String) -> Unit){
+        util.addFilmGrain(inputFile = image, outputFile = EDITED_IMAGE_FILE_NAME, intensity = intensity, onComplete = {
+            onComplete(EDITED_IMAGE_FILE_NAME)
+        }, onError = onError)
+    }
+
     private suspend fun applyLutFile(scope: CoroutineScope, lutCube: LutCube, image: String, onComplete: (String) -> Unit, onError: (String) -> Unit) {
         withContext(Dispatchers.IO) {
             val lutFile = "lut.cube".also { saveLutFile(fileName = it, lut = lutCube.file_) }

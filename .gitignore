@@ -8,4 +8,6 @@ captures
 .cxx
 local.properties
 xcuserdata
+iosApp/Pods/
 .kotlin
+/androidApp/release

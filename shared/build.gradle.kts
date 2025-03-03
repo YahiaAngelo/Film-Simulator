@@ -1,4 +1,3 @@
-import org.jetbrains.compose.ExperimentalComposeLibrary
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -100,6 +99,7 @@ kotlin {
             implementation(libs.filekit.compose)
             implementation(libs.kotlinx.datetime)
             implementation(libs.autolinktext)
+            implementation(libs.skiko)
             //api(libs.image.loader.extension.blur)
         }
 

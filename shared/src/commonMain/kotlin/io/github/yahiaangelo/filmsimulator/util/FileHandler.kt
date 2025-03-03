@@ -1,9 +1,12 @@
 package util
 
 import io.github.yahiaangelo.filmsimulator.util.AppContext
+import okio.Path
 
 const val IMAGE_FILE_NAME = "image.jpeg"
 const val EDITED_IMAGE_FILE_NAME = "image-new.jpeg"
+
+expect val systemTemporaryPath: Path
 /**
  * Save an image file to cache
  */
