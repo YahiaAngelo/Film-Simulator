@@ -1,7 +1,7 @@
 package util
 
-import cocoapods.ffmpeg_kit_ios_full_gpl.FFmpegKit
-import cocoapods.ffmpeg_kit_ios_full_gpl.ReturnCode
+import cocoapods.ffmpeg_kit_ios_min.FFmpegKit
+import cocoapods.ffmpeg_kit_ios_min.ReturnCode
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
