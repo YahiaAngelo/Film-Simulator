@@ -6,9 +6,12 @@ import io.github.vinceglb.filekit.core.PlatformFile
 import io.github.vinceglb.filekit.core.extension
 import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
+import io.github.yahiaangelo.filmsimulator.PlatformName
 import io.github.yahiaangelo.filmsimulator.data.source.FilmRepository
 import io.github.yahiaangelo.filmsimulator.data.source.SettingsRepository
 import io.github.yahiaangelo.filmsimulator.data.source.toFavoriteLut
+import io.github.yahiaangelo.filmsimulator.getAndroidSdkVersion
+import io.github.yahiaangelo.filmsimulator.getPlatform
 import io.github.yahiaangelo.filmsimulator.image.ImageAdjustments
 import io.github.yahiaangelo.filmsimulator.image.export.ShaderExporter
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
@@ -147,6 +150,7 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
     }
 
     private fun updateImageAdjustment(update: (ImageAdjustments) -> ImageAdjustments) {
+        if (getPlatform().name == PlatformName.ANDROID && getAndroidSdkVersion() < 33) return
         _currentAdjustments.value = update(_currentAdjustments.value)
         updateUiState { it.copy(imageAdjustments = _currentAdjustments.value) }
     }
