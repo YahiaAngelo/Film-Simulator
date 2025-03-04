@@ -3,6 +3,7 @@ package screens.home
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,12 +54,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
@@ -83,7 +86,10 @@ import io.github.vinceglb.filekit.core.PickerMode
 import io.github.vinceglb.filekit.core.PickerType
 import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
+import io.github.yahiaangelo.filmsimulator.PlatformName
 import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
+import io.github.yahiaangelo.filmsimulator.getAndroidSdkVersion
+import io.github.yahiaangelo.filmsimulator.getPlatform
 import io.github.yahiaangelo.filmsimulator.image.ImageWithAdjustments
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
@@ -279,6 +285,23 @@ data class HomeScreen(
                 Spacer(modifier = Modifier.size(16.dp))
 
                 // Image adjustment sliders
+                AdjustmentsSection(
+                    state = state,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+        }
+    }
+
+    @Composable
+    private fun AdjustmentsSection(
+        state: HomeUiState,
+        modifier: Modifier = Modifier
+    ) {
+        Box(modifier = modifier) {
+            // Image adjustment sliders
+            Column {
                 CenteredSettingsSlider(
                     name = "Exposure",
                     value = state.imageAdjustments.exposure,
@@ -300,7 +323,6 @@ data class HomeScreen(
                     range = -20f..20f,
                     steps = 1
                 )
-
                 CenteredSettingsSlider(
                     name = "Brightness",
                     value = state.imageAdjustments.brightness,
@@ -308,7 +330,6 @@ data class HomeScreen(
                     range = -20f..20f,
                     steps = 1
                 )
-
                 CenteredSettingsSlider(
                     name = "Saturation",
                     value = state.imageAdjustments.saturation,
@@ -316,7 +337,6 @@ data class HomeScreen(
                     range = -20f..20f,
                     steps = 1
                 )
-
                 SettingsSlider(
                     name = "Grain",
                     value = state.imageAdjustments.grain,
@@ -324,7 +344,6 @@ data class HomeScreen(
                     range = 0f..10f,
                     steps = 20
                 )
-
                 SettingsSlider(
                     name = "Chromatic Aberration",
                     value = state.imageAdjustments.chromaticAberration,
@@ -334,6 +353,24 @@ data class HomeScreen(
                 )
             }
 
+            // Overlay for Android < 13 (TIRAMISU)
+            if (getPlatform().name == PlatformName.ANDROID && getAndroidSdkVersion() < 33) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .alpha(0.8f)
+                        .background(MaterialTheme.colorScheme.surface),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Image adjustments require Android 13 and above",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
         }
     }
 

@@ -11,3 +11,5 @@ enum class PlatformName {
 }
 
 expect fun getPlatform(): Platform
+
+expect fun getAndroidSdkVersion(): Int
