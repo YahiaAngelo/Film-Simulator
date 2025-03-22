@@ -68,3 +68,13 @@ actual suspend fun saveImageToGallery(image: String, appContext: AppContext) {
         }
     } ?: throw IOException("Failed to create new MediaStore record.")
 }
+
+/**
+ * Create a directory
+ */
+actual suspend fun createDirectory(directoryName: String) {
+    withContext(Dispatchers.IO) {
+        val path = "${systemTemporaryPath/directoryName}".toPath()
+        FileSystem.SYSTEM.createDirectory(path)
+    }
+}

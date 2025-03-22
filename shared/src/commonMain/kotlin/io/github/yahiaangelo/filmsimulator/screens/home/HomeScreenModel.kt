@@ -14,6 +14,7 @@ import io.github.yahiaangelo.filmsimulator.getAndroidSdkVersion
 import io.github.yahiaangelo.filmsimulator.getPlatform
 import io.github.yahiaangelo.filmsimulator.image.ImageAdjustments
 import io.github.yahiaangelo.filmsimulator.image.export.ShaderExporter
+import io.github.yahiaangelo.filmsimulator.lut.LutDownloadManager
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.util.AppContext
 import io.github.yahiaangelo.filmsimulator.util.convertImageToJpeg
@@ -31,12 +32,14 @@ import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.koin.dsl.module
 import util.EDITED_IMAGE_FILE_NAME
 import util.IMAGE_FILE_NAME
+import util.THUMBNAILS_DIR
+import util.createDirectory
 import util.readImageFile
 import util.saveImageFile
 import util.saveImageToGallery
 
 val homeScreenModule = module {
-    factory { HomeScreenModel(get(), get()) }
+    factory { HomeScreenModel(get(), get(), get()) }
 }
 
 /**
@@ -74,7 +77,13 @@ data class HomeUiState(
     val onExposureChange: (Float) -> Unit = {},
     val onGrainChange: (Float) -> Unit = {},
     val onChromaticAberrationChange: (Float) -> Unit = {},
-)
+    val showDownloadDialog: Boolean = false,
+    val showDownloadProgress: Boolean = false,
+    val downloadProgress: Pair<Int, Int> = 0 to 0,
+    val onDownloadLutsConfirm: () -> Unit = {},
+    val onDownloadLutsDismiss: () -> Unit = {},
+    val filmThumbnails: Map<String, String> = emptyMap(),
+    )
 
 enum class BottomSheetState {
     COLLAPSED, EXPANDED, HIDDEN
@@ -83,15 +92,26 @@ enum class BottomSheetState {
 /**
  * ViewModel for the Main Screen
  */
-data class HomeScreenModel(val repository: FilmRepository, val settingsRepository: SettingsRepository) : ScreenModel {
+data class HomeScreenModel(val repository: FilmRepository, val settingsRepository: SettingsRepository, val lutDownloadManager: LutDownloadManager) : ScreenModel {
 
     private val _uiState: MutableStateFlow<HomeUiState> = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState
 
+
     init {
         refresh()
         addSettingsListeners()
+        screenModelScope.launch {
+            lutDownloadManager.uiState.collect { downloadState ->
+                updateUiState { it.copy(
+                    showDownloadDialog = downloadState.showDownloadDialog,
+                    showDownloadProgress = downloadState.showDownloadProgress,
+                    downloadProgress = downloadState.downloadProgress
+                )}
+            }
+        }
     }
+
 
     private fun updateUiState(update: (HomeUiState) -> HomeUiState) {
         _uiState.value = update(_uiState.value)
@@ -116,6 +136,19 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
                 updateUiState { it.copy(userMessage = "Error refreshing data: ${e.message}") }
             } finally {
                 updateUiState { it.copy(isLoading = false) }
+            }
+        }
+    }
+
+
+    fun dismissDownloadDialog() {
+        lutDownloadManager.dismissDownloadDialog()
+    }
+
+    fun confirmDownloadLuts() {
+        lutDownloadManager.confirmDownloadLuts(screenModelScope) { success, message ->
+            message?.let {
+                updateUiState { it.copy(userMessage = message) }
             }
         }
     }
@@ -188,6 +221,66 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
         }
     }
 
+
+    fun generateThumbnailsForGroup(category: String) {
+        _originalImage.value?.let { originalImage ->
+            screenModelScope.launch {
+                try {
+                    // Create thumbnails directory if it doesn't exist
+                    createDirectory(THUMBNAILS_DIR)
+
+                    val films = repository.getFilms(false).filter { it.category == category }
+                    val thumbnails = _uiState.value.filmThumbnails.toMutableMap()
+
+                    for (film in films) {
+                        // Skip if thumbnail already exists
+                        if (thumbnails.containsKey(film.lut_name)) continue
+
+                        // Generate thumbnail
+                        val thumbnailPath = repository.generateLutThumbnail(film, originalImage)
+                        thumbnails[film.lut_name] = thumbnailPath
+                        updateUiState { it.copy(filmThumbnails = thumbnails.toMap()) }
+
+                    }
+
+                    updateUiState { it.copy(filmThumbnails = thumbnails.toMap()) }
+                } catch (e: Exception) {
+                    updateUiState { it.copy(userMessage = "Error generating thumbnails: ${e.message}") }
+                } finally {
+                    updateUiState { it.copy(isLoading = false) }
+                }
+            }
+        }
+    }
+
+    private fun generateFilmThumbnails() {
+        _originalImage.value?.let { originalImage ->
+            screenModelScope.launch {
+                try {
+                    // Create thumbnails directory if it doesn't exist
+                    createDirectory(THUMBNAILS_DIR)
+
+                    // Generate thumbnails only for favorite films initially
+                    val favoriteFilms = repository.getFavoriteFilms()
+                    val favoriteLutNames = favoriteFilms.map { it.name }
+                    val filmsToProcess = repository.getFilms(false)
+                        .filter { favoriteLutNames.contains(it.name) }
+
+                    val thumbnails = mutableMapOf<String, String>()
+
+                    for (film in filmsToProcess) {
+                        val thumbnailPath = repository.generateLutThumbnail(film, originalImage)
+                        thumbnails[film.lut_name] = thumbnailPath
+                    }
+
+                    updateUiState { it.copy(filmThumbnails = thumbnails.toMap()) }
+                } catch (e: Exception) {
+                    updateUiState { it.copy(userMessage = "Error generating thumbnails: ${e.message}") }
+                }
+            }
+        }
+    }
+
     fun onImagePickerResult(file: PlatformFile?) {
         file?.let { platformFile ->
             if (!supportedImageExtensions.contains(platformFile.extension.lowercase())) {
@@ -209,6 +302,14 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
                 updateUiState { it.copy(imageAdjustments = ImageAdjustments()) }
 
                 emitImage(IMAGE_FILE_NAME)
+
+                // Clear existing thumbnails when a new image is loaded
+                updateUiState { it.copy(filmThumbnails = emptyMap()) }
+
+                // Generate thumbnails only for favorites initially
+                generateFilmThumbnails()
+
+                // Apply selected film if available
                 _uiState.value.selectedFilm?.let { selectFilmLut(it) }
             }
         }
