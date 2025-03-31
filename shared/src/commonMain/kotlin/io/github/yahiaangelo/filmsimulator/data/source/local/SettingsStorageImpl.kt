@@ -26,6 +26,12 @@ class SettingsStorageImpl : SettingsStorage {
     @OptIn(ExperimentalSettingsApi::class)
     private val observableSettings: ObservableSettings by lazy { settings.makeObservable() }
 
+    override var hasShownLutDownloadDialog: Boolean
+        get() = observableSettings[StorageKeys.HAS_SHOWN_LUT_DOWNLOAD_DIALOG.key] ?: false
+        set(value) {
+            observableSettings[StorageKeys.HAS_SHOWN_LUT_DOWNLOAD_DIALOG.key] = value
+        }
+
     override var exportQuality: Int
         get() = observableSettings[StorageKeys.EXPORT_QUALITY.key] ?: 90
         set(value) {

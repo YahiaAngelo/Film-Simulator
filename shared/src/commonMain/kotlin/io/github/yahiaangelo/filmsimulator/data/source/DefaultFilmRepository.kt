@@ -14,6 +14,7 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 import util.EDITED_IMAGE_FILE_NAME
 import util.apply3dLut
+import util.apply3dLutAsync
 import util.saveLutFile
 
 val filmRepoModule = module {
@@ -67,6 +68,49 @@ internal class DefaultFilmRepository(
         }
     }
 
+    override suspend fun downloadAllLutCubes(onProgress: (Int, Int) -> Unit): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val films = getFilms(false)
+                films.forEachIndexed { index, filmLut ->
+                    onProgress(index + 1, films.size)
+                    if (getLutCube(filmLut.lut_name) == null) {
+                        val lutFile = networkDataSource.getLutCube(filmLut.lut_name)
+                        saveLutCube(name = filmLut.lut_name, lutFile = lutFile)
+                    }
+                }
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+
+
+
+    override suspend fun generateLutThumbnail(filmLut: FilmLut, inputImage: String): String {
+        return withContext(Dispatchers.IO) {
+            val thumbnailName = "thumbnail_${filmLut.lut_name}.jpg".replace("/", "_")
+            var lutCube = getLutCube(filmLut.lut_name)
+            if (lutCube == null) {
+                downloadLutCube(filmLut.lut_name)
+                lutCube = getLutCube(filmLut.lut_name)
+            }
+
+            val lutFile = "lut.cube".also { saveLutFile(fileName = it, lut = lutCube!!.file_) }
+
+            // Apply LUT with isThumbnail=true flag for optimization
+            val success = apply3dLut(
+                inputFile = inputImage,
+                lutFile = lutFile,
+                outputFile = thumbnailName,
+                isThumbnail = true
+            )
+
+            if (success) thumbnailName else inputImage
+        }
+    }
+
     override suspend fun saveLutCube(name: String, lutFile: ByteArray) {
         withContext(Dispatchers.IO) {
             localDataSource.createLutCubes(listOf(
@@ -106,7 +150,7 @@ internal class DefaultFilmRepository(
             val lutFile = "lut.cube".also { saveLutFile(fileName = it, lut = lutCube.file_) }
             //TODO refactor this function to take input and output file names
             val outputFile = EDITED_IMAGE_FILE_NAME
-            apply3dLut(
+            apply3dLutAsync(
                 inputFile = image,
                 lutFile = lutFile,
                 outputFile = outputFile,
