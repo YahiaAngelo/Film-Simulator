@@ -36,6 +36,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
@@ -55,10 +56,15 @@ import film_simulator.shared.generated.resources.images
 import film_simulator.shared.generated.resources.cancel
 import film_simulator.shared.generated.resources.settings
 import film_simulator.shared.generated.resources.source_code
+import io.github.yahiaangelo.filmsimulator.lut.LutDownloadManager
 import io.github.yahiaangelo.filmsimulator.util.AppContext
 import io.github.yahiaangelo.filmsimulator.util.Platform
+import io.github.yahiaangelo.filmsimulator.view.LutDownloadDialog
+import io.github.yahiaangelo.filmsimulator.view.LutDownloadProgressDialog
 import io.github.yahiaangelo.filmsimulator.view.SettingsSlider
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import org.koin.mp.KoinPlatform.getKoin
 import sh.calvin.autolinktext.rememberAutoLinkText
 
 
@@ -73,6 +79,10 @@ class SettingsScreen : Screen {
         val showDefaultPickerDialog = remember { mutableStateOf(false) }
         val vm = getScreenModel<SettingsScreenModel>()
         val uiState by vm.uiState.collectAsState()
+
+        val lutDownloadManager = remember { getKoin().get<LutDownloadManager>() }
+        val lutDownloadState by lutDownloadManager.uiState.collectAsState()
+        val coroutineScope = rememberCoroutineScope()
 
         Scaffold(
             snackbarHost = {
@@ -136,11 +146,51 @@ class SettingsScreen : Screen {
                         )
                     },
                 )
+                ListItem(
+                    modifier = Modifier.clickable {
+                        lutDownloadManager.showDownloadDialog()
+                    },
+                    text = {
+                        Text(
+                            text = "Download LUTs",
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    },
+                    secondaryText = {
+                        Text(
+                            text = "Download all Lut Files",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    },
+                )
                 Spacer(modifier = Modifier.padding(16.dp))
                 Divider(color = MaterialTheme.colorScheme.secondaryContainer, thickness = 1.dp)
                 AboutSection()
             }
         }
+
+        // Show LUT download dialog when needed
+        LutDownloadDialog(
+            isVisible = lutDownloadState.showDownloadDialog,
+            onDismiss = { lutDownloadManager.dismissDownloadDialog() },
+            onConfirm = {
+                lutDownloadManager.confirmDownloadLuts(coroutineScope) { success, message ->
+                    message?.let {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(it)
+                        }
+                    }
+                }
+            }
+        )
+
+        // Show download progress dialog when needed
+        LutDownloadProgressDialog(
+            isVisible = lutDownloadState.showDownloadProgress,
+            current = lutDownloadState.downloadProgress.first,
+            total = lutDownloadState.downloadProgress.second,
+            onDismiss = {} // Progress dialog can't be dismissed
+        )
 
         uiState.userMessage?.let { message ->
             LaunchedEffect(scaffoldState, vm, message) {

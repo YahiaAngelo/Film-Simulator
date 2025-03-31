@@ -100,6 +100,8 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.autolinktext)
             implementation(libs.skiko)
+            implementation(libs.konnectivity)
+            implementation(libs.coil.network.ktor3)
             //api(libs.image.loader.extension.blur)
         }
 

@@ -2,6 +2,7 @@ package screens.home
 
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import com.plusmobileapps.konnectivity.Konnectivity
 import io.github.vinceglb.filekit.core.PlatformFile
 import io.github.vinceglb.filekit.core.extension
 import io.github.yahiaangelo.filmsimulator.FavoriteLut
@@ -96,6 +97,7 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
 
     private val _uiState: MutableStateFlow<HomeUiState> = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState
+    private val konnectivity = Konnectivity()
 
 
     init {
@@ -128,7 +130,9 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
         screenModelScope.launch {
             try {
                 updateUiState { it.copy(isLoading = true, loadingMessage = "Refreshing data...") }
-                repository.refresh()
+                if (konnectivity.isConnected) {
+                    repository.refresh()
+                }
                 val newFilmList = repository.getFilmsStream().first()
                 val newFavoriteList = repository.getFavoriteFilmsStream().first()
                 updateUiState { it.copy(filmLuts = newFilmList, favoriteLuts = newFavoriteList, defaultPickerType = settingsRepository.getSettings().defaultPicker, userMessage = "Data refreshed successfully.") }
