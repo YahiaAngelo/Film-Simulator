@@ -30,6 +30,10 @@ interface FilmRepository {
 
     suspend fun downloadLutCube(name: String)
 
+    suspend fun downloadAllLutCubes(onProgress: (Int, Int) -> Unit): Boolean
+
+    suspend fun generateLutThumbnail(filmLut: FilmLut, inputImage: String): String
+
     suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, image: String, onComplete: (String) -> Unit, onError: (String) -> Unit)
 
     suspend fun addFilmGrain(scope: CoroutineScope, image: String, intensity: Float, onComplete: (String) -> Unit, onError: (String) -> Unit)

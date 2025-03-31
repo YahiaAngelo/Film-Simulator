@@ -48,3 +48,13 @@ actual suspend fun saveImageToGallery(image: String, appContext: AppContext) {
 
   UIImageWriteToSavedPhotosAlbum(uiImage, null, null, null)
 }
+
+/**
+ * Create a directory
+ */
+actual suspend fun createDirectory(directoryName: String) {
+    withContext(Dispatchers.IO) {
+        val path = "${systemTemporaryPath/directoryName}".toPath()
+        FileSystem.SYSTEM.createDirectory(path)
+    }
+}

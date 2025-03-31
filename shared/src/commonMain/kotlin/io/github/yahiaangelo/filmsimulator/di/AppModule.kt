@@ -8,6 +8,7 @@ import io.github.yahiaangelo.filmsimulator.data.source.local.settingsStorageImpl
 import io.github.yahiaangelo.filmsimulator.data.source.network.filmNetworkDataSourceModule
 import io.github.yahiaangelo.filmsimulator.data.source.network.httpClientModule
 import io.github.yahiaangelo.filmsimulator.data.source.settingsRepoModule
+import io.github.yahiaangelo.filmsimulator.lut.lutDownloadManagerModule
 import io.github.yahiaangelo.filmsimulator.screens.settings.settingsScreenModel
 import screens.home.homeScreenModule
 
@@ -24,4 +25,5 @@ fun appModule() = listOf(
     settingsScreenModel,
     settingsRepoModule,
     settingsStorageImplModule,
+    lutDownloadManagerModule,
 )

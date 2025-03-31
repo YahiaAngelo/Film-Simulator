@@ -1,32 +1,45 @@
 package screens.home
 
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Divider
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Surface
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -34,16 +47,19 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material.rememberScaffoldState
-import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.SheetState
-import androidx.compose.material3.Slider
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -55,29 +71,42 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
+import coil3.compose.SubcomposeAsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.github.panpf.zoomimage.CoilZoomAsyncImage
 import com.github.panpf.zoomimage.rememberCoilZoomState
-import com.seiko.imageloader.rememberImagePainter
 
 import film_simulator.shared.generated.resources.Res
 import film_simulator.shared.generated.resources.film
+import film_simulator.shared.generated.resources.ic_film_bw
+import film_simulator.shared.generated.resources.ic_film_colorslide
+import film_simulator.shared.generated.resources.ic_film_fujixtransiii
+import film_simulator.shared.generated.resources.ic_film_negative_new
+import film_simulator.shared.generated.resources.ic_film_negative_old
+import film_simulator.shared.generated.resources.ic_film_instant_pro
+import film_simulator.shared.generated.resources.ic_film_negative_color
+import film_simulator.shared.generated.resources.ic_film_instant_consumer
+import film_simulator.shared.generated.resources.ic_film_print
 import film_simulator.shared.generated.resources.ic_image_add_24
-import film_simulator.shared.generated.resources.search
+import film_simulator.shared.generated.resources.image_24
 
 import film_simulator.shared.generated.resources.select_image
 import film_simulator.shared.generated.resources.select_your_film
@@ -93,15 +122,21 @@ import io.github.yahiaangelo.filmsimulator.getPlatform
 import io.github.yahiaangelo.filmsimulator.image.ImageWithAdjustments
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
+import io.github.yahiaangelo.filmsimulator.util.getScreenHeight
+import io.github.yahiaangelo.filmsimulator.util.getScreenWidth
 import io.github.yahiaangelo.filmsimulator.util.supportedImageExtensions
 import io.github.yahiaangelo.filmsimulator.view.AppScaffold
 import io.github.yahiaangelo.filmsimulator.view.CenteredSettingsSlider
+import io.github.yahiaangelo.filmsimulator.view.LutDownloadDialog
+import io.github.yahiaangelo.filmsimulator.view.LutDownloadProgressDialog
 import io.github.yahiaangelo.filmsimulator.view.ProgressDialog
 import io.github.yahiaangelo.filmsimulator.view.SettingsSlider
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import okio.FileSystem
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import util.THUMBNAILS_DIR
+import util.systemTemporaryPath
 
 
 data class HomeScreen(
@@ -113,7 +148,11 @@ data class HomeScreen(
     override fun Content() {
         val scope = rememberCoroutineScope()
         val scaffoldState = rememberScaffoldState()
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val sheetState = rememberBottomSheetScaffoldState(
+            bottomSheetState = rememberStandardBottomSheetState(
+                initialValue = SheetValue.PartiallyExpanded
+            )
+        )
         val navigator = LocalNavigator.currentOrThrow
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -159,6 +198,12 @@ data class HomeScreen(
             onExposureChange = vm::adjustExposure,
             onGrainChange = vm::addGrain,
             onChromaticAberrationChange = vm::addChromaticAberration,
+            showDownloadDialog = uiState.showDownloadDialog,
+            showDownloadProgress = uiState.showDownloadProgress,
+            downloadProgress = uiState.downloadProgress,
+            onDownloadLutsConfirm = vm::confirmDownloadLuts,
+            onDownloadLutsDismiss = vm::dismissDownloadDialog,
+            filmThumbnails = uiState.filmThumbnails
         )
 
         AppScaffold(
@@ -175,16 +220,23 @@ data class HomeScreen(
             )
         }
 
-        homeScreenState.showBottomSheet.let {
-            when (it) {
-                BottomSheetState.COLLAPSED -> {}
-                BottomSheetState.EXPANDED -> scope.launch { sheetState.expand() }
-                BottomSheetState.HIDDEN -> scope.launch { sheetState.hide() }
-            }
-        }
+        LutDownloadDialog(
+            isVisible = homeScreenState.showDownloadDialog,
+            onDismiss = homeScreenState.onDownloadLutsDismiss,
+            onConfirm = homeScreenState.onDownloadLutsConfirm
+        )
+
+        LutDownloadProgressDialog(
+            isVisible = homeScreenState.showDownloadProgress,
+            current = homeScreenState.downloadProgress.first,
+            total = homeScreenState.downloadProgress.second,
+            onDismiss = homeScreenState.onDownloadLutsDismiss
+        )
+
 
         FilmLutsListBottomSheet(
             state = homeScreenState,
+            viewModel = vm,
             sheetState = sheetState,
         )
 
@@ -378,50 +430,52 @@ data class HomeScreen(
     @Composable
     private fun FilmLutsListBottomSheet(
         state: HomeUiState,
-        sheetState: SheetState,
+        viewModel: HomeScreenModel,
+        sheetState: BottomSheetScaffoldState,
     ) {
         val listState: LazyListState = rememberLazyListState()
+        val focusManager = LocalFocusManager.current
+
         if (state.showBottomSheet == BottomSheetState.HIDDEN) return
-        ModalBottomSheet(
-            onDismissRequest = state.onDismissRequest,
-            sheetState = sheetState,
-            scrimColor = if (state.showBottomSheet == BottomSheetState.COLLAPSED) Color.Transparent else BottomSheetDefaults.ScrimColor,
-            contentWindowInsets = { WindowInsets.ime }
-        ) {
-            Column {
-                if (state.showBottomSheet == BottomSheetState.COLLAPSED) {
-                    FilmItem(
-                        film = state.selectedFilm ?: state.filmLuts.first(),
-                        selectedFilm = state.selectedFilm,
-                        onItemClick = { state.onFilmBoxClick() },
-                        isFavorite = state.favoriteLuts.any { it.name == state.selectedFilm?.name },
-                        onFavoriteClick = {
-                            if (state.favoriteLuts.any { it.name == state.selectedFilm?.name }) {
-                                state.onRemoveFavoriteClick(
-                                    state.selectedFilm ?: state.filmLuts.first()
-                                )
-                            } else {
-                                state.onAddFavoriteClick(
-                                    state.selectedFilm ?: state.filmLuts.first()
-                                )
-                            }
-                        }
-                    )
-                } else {
+
+        // Clear focus when bottom sheet state changes to avoid keyboard issues
+        LaunchedEffect(sheetState.bottomSheetState.currentValue) {
+            focusManager.clearFocus()
+        }
+
+        BottomSheetScaffold(
+            scaffoldState = sheetState,
+            sheetPeekHeight = getScreenHeight() * 0.45f,
+            sheetSwipeEnabled = true,
+            sheetDragHandle = {},
+            sheetContent = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .imePadding() // Handle keyboard properly
+                ) {
                     FilmLutsList(
+                        state = state,
+                        viewModel = viewModel,
                         listState = listState,
                         filmLuts = state.filmLuts,
                         favoriteLuts = state.favoriteLuts,
                         selectedFilm = state.selectedFilm,
                         onItemClick = {
                             state.onItemClick(it)
+                            focusManager.clearFocus() // Clear focus when selecting a film
                         },
                         onAddFavoriteClick = state.onAddFavoriteClick,
-                        onRemoveFavoriteClick = state.onRemoveFavoriteClick
+                        onRemoveFavoriteClick = state.onRemoveFavoriteClick,
+                        onDismissRequest = {
+                            focusManager.clearFocus()
+                            state.onDismissRequest()
+                        }
                     )
                 }
-                Spacer(modifier = Modifier.size(23.dp))
             }
+        ) {
+            // Content under the bottom sheet (empty in this case)
         }
     }
 
@@ -462,70 +516,405 @@ data class HomeScreen(
     }
 
 
-    @OptIn(ExperimentalFoundationApi::class)
+    @OptIn(
+        ExperimentalFoundationApi::class,
+        ExperimentalMaterial3Api::class,
+        ExperimentalMaterialApi::class
+    )
     @Composable
     private fun FilmLutsList(
+        state: HomeUiState,
+        viewModel: HomeScreenModel,
         listState: LazyListState,
         filmLuts: List<FilmLut>,
         favoriteLuts: List<FavoriteLut>,
         selectedFilm: FilmLut?,
         onItemClick: (film: FilmLut) -> Unit,
         onAddFavoriteClick: (FilmLut) -> Unit,
-        onRemoveFavoriteClick: (FilmLut) -> Unit
+        onRemoveFavoriteClick: (FilmLut) -> Unit,
+        onDismissRequest: () -> Unit
     ) {
         var searchQuery by remember { mutableStateOf("") }
-        var favoriteFilter by remember { mutableStateOf(false) }
+        var isSearchActive by remember { mutableStateOf(false) }
+        var selectedGroup by remember { mutableStateOf<String?>(null) }
+        var tabsState by remember { mutableStateOf(0) }
+        val titles = listOf("All", "Favorites")
 
+        // Filter films based on search query and favorites tab
         val filteredFilmLuts = filmLuts.filter {
             (searchQuery.isEmpty() || it.name.contains(searchQuery, ignoreCase = true)) &&
-                    (!favoriteFilter || favoriteLuts.any { favorite -> favorite.name == it.name })
+                    (tabsState != 1 || favoriteLuts.any { favorite -> favorite.name == it.name })
+        }
+
+        val favoriteFilms = filmLuts.filter { film ->
+            favoriteLuts.any { favorite -> favorite.name == film.name }
         }
         val sortedAndGrouped = filteredFilmLuts.groupBy { it.category }
+        val groupsList = sortedAndGrouped.keys.toList()
+
+        // Handle keyboard appearance
+        val focusRequester = remember { FocusRequester() }
+        val focusManager = LocalFocusManager.current
 
         Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 8.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text(text = stringResource(Res.string.search)) },
-                    leadingIcon = {
-                        Icon(Icons.Filled.Search, contentDescription = "Search")
-                    },
-                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onSurface),
-                    singleLine = true,
+            // Top bar with tabs and search
+            if (selectedGroup == null) {
+                if (isSearchActive) {
+                    SearchBar(
+                        query = searchQuery,
+                        onQueryChange = { searchQuery = it },
+                        onClose = {
+                            isSearchActive = false
+                            searchQuery = ""
+                            focusManager.clearFocus()
+                        },
+                        focusRequester = focusRequester
+                    )
+
+                    LaunchedEffect(isSearchActive) {
+                        if (isSearchActive) {
+                            delay(100) // Short delay to ensure the UI is ready
+                            focusRequester.requestFocus()
+                        }
+                    }
+                } else {
+                    CategoryTabsHeader(
+                        tabsState = tabsState,
+                        titles = titles,
+                        onTabSelected = { tabsState = it },
+                        onSearchClick = { isSearchActive = true },
+                        onDismissRequest = onDismissRequest
+                    )
+                }
+            } else {
+                // Group header with back button
+                GroupHeader(
+                    groupName = selectedGroup!!,
+                    onBackClick = { selectedGroup = null }
                 )
-                IconButton(onClick = { favoriteFilter = !favoriteFilter }) {
+            }
+
+            AnimatedContent(
+                targetState = Triple(selectedGroup, tabsState, isSearchActive),
+                label = "Content Animation"
+            ) { (targetGroup, currentTab, searching) ->
+                when {
+                    // Show search results in grid when search is active
+                    searching && searchQuery.isNotEmpty() -> {
+                        FilmsGrid(
+                            films = filteredFilmLuts,
+                            selectedFilm = selectedFilm,
+                            onItemClick = onItemClick,
+                            favoriteLuts = favoriteLuts,
+                            onAddFavoriteClick = onAddFavoriteClick,
+                            onRemoveFavoriteClick = onRemoveFavoriteClick,
+                            thumbnails = state.filmThumbnails
+                        )
+                    }
+                    // Show specific group films in grid
+                    targetGroup != null -> {
+                        // Generate thumbnails for the selected group when it's selected
+                        LaunchedEffect(targetGroup) {
+                            viewModel.generateThumbnailsForGroup(targetGroup)
+                        }
+
+                        FilmsGrid(
+                            films = sortedAndGrouped[targetGroup] ?: emptyList(),
+                            selectedFilm = selectedFilm,
+                            onItemClick = onItemClick,
+                            favoriteLuts = favoriteLuts,
+                            onAddFavoriteClick = onAddFavoriteClick,
+                            onRemoveFavoriteClick = onRemoveFavoriteClick,
+                            thumbnails = state.filmThumbnails
+                        )
+                    }
+                    // Show favorites tab
+                    currentTab == 1 -> {
+                        FilmsGrid(
+                            films = favoriteFilms,
+                            selectedFilm = selectedFilm,
+                            onItemClick = onItemClick,
+                            favoriteLuts = favoriteLuts,
+                            onAddFavoriteClick = onAddFavoriteClick,
+                            onRemoveFavoriteClick = onRemoveFavoriteClick,
+                            thumbnails = state.filmThumbnails
+                        )
+                    }
+                    // Show empty search results message
+                    searching && searchQuery.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(getScreenHeight() * 0.45f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Type to search for films",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    // Show categories list
+                    else -> {
+                        CategoriesList(
+                            groupsList = groupsList,
+                            sortedAndGrouped = sortedAndGrouped,
+                            onGroupClick = { selectedGroup = it },
+                            listState = listState
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun SearchBar(
+        query: String,
+        onQueryChange: (String) -> Unit,
+        onClose: () -> Unit,
+        focusRequester: FocusRequester
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close search"
+                )
+            }
+
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp)
+                    .focusRequester(focusRequester),
+                placeholder = {
+                    Text(
+                        "Search films...",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                },
+                singleLine = true,
+                colors = androidx.compose.material.TextFieldDefaults.outlinedTextFieldColors(
+                    textColor = MaterialTheme.colorScheme.onSurface,
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                ),
+                leadingIcon = {
                     Icon(
-                        imageVector = if (favoriteFilter) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = if (favoriteFilter) "Show all" else "Show favorites"
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Clear",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Search
+                ),
+                keyboardActions = KeyboardActions(
+                    onSearch = {
+                        // Close keyboard but keep search active
+                        focusRequester.freeFocus()
+                        //LocalFocusManager.current.clearFocus()
+                    }
+                )
+            )
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun CategoryTabsHeader(
+        tabsState: Int,
+        titles: List<String>,
+        onTabSelected: (Int) -> Unit,
+        onSearchClick: () -> Unit,
+        onDismissRequest: () -> Unit
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().background(color = MaterialTheme.colorScheme.background),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onDismissRequest) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close"
+                )
+            }
+
+            PrimaryTabRow(
+                selectedTabIndex = tabsState,
+                modifier = Modifier.weight(1f)
+            ) {
+                titles.forEachIndexed { index, title ->
+                    Tab(
+                        selected = tabsState == index,
+                        onClick = { onTabSelected(index) },
+                        text = {
+                            Text(
+                                text = title,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     )
                 }
             }
 
-            LazyColumn(state = listState) {
-                sortedAndGrouped.forEach { (category, films) ->
-                    stickyHeader {
-                        CategoryHeader(category)
-                    }
-                    items(films) { film ->
-                        FilmItem(
-                            film = film,
-                            selectedFilm = selectedFilm,
-                            onItemClick = onItemClick,
-                            isFavorite = favoriteLuts.any { it.name == film.name },
-                            onFavoriteClick = {
-                                if (favoriteLuts.any { it.name == film.name }) {
-                                    onRemoveFavoriteClick(film)
-                                } else {
-                                    onAddFavoriteClick(film)
-                                }
-                            }
+            IconButton(onClick = onSearchClick) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search"
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun GroupHeader(
+        groupName: String,
+        onBackClick: () -> Unit
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                    contentDescription = "Back",
+                    modifier = Modifier.rotate(180f)
+                )
+            }
+            Text(
+                text = groupName,
+                style = MaterialTheme.typography.titleMedium
+            )
+        }
+    }
+
+    @Composable
+    private fun FilmsGrid(
+        films: List<FilmLut>,
+        selectedFilm: FilmLut?,
+        onItemClick: (film: FilmLut) -> Unit,
+        favoriteLuts: List<FavoriteLut>,
+        onAddFavoriteClick: (FilmLut) -> Unit,
+        onRemoveFavoriteClick: (FilmLut) -> Unit,
+        thumbnails: Map<String, String>
+    ) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(getScreenHeight() * 0.45f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(count = films.size) { index ->
+                val film = films[index]
+                FilmItem(
+                    film = film,
+                    selectedFilm = selectedFilm,
+                    onItemClick = onItemClick,
+                    isFavorite = favoriteLuts.any { it.name == film.name },
+                    onFavoriteClick = {
+                        if (favoriteLuts.any { it.name == film.name }) {
+                            onRemoveFavoriteClick(film)
+                        } else {
+                            onAddFavoriteClick(film)
+                        }
+                    },
+                    thumbnails = thumbnails,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+
+    @OptIn(ExperimentalMaterialApi::class)
+    @Composable
+    private fun CategoriesList(
+        groupsList: List<String>,
+        sortedAndGrouped: Map<String, List<FilmLut>>,
+        onGroupClick: (String) -> Unit,
+        listState: LazyListState
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .wrapContentHeight()
+                .height(getScreenHeight() * 0.45f)
+                .padding(bottom = 40.dp)
+        ) {
+            items(groupsList) { group ->
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    onClick = { onGroupClick(group) }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = when (group) {
+                                "Print" -> painterResource(Res.drawable.ic_film_print)
+                                "Negative Old" -> painterResource(Res.drawable.ic_film_negative_old)
+                                "Negative New" -> painterResource(Res.drawable.ic_film_negative_new)
+                                "Bw" -> painterResource(Res.drawable.ic_film_bw)
+                                "Colorslide" -> painterResource(Res.drawable.ic_film_colorslide)
+                                "Fujixtransiii" -> painterResource(Res.drawable.ic_film_fujixtransiii)
+                                "Instant Pro" -> painterResource(Res.drawable.ic_film_instant_pro)
+                                "Negative Color" -> painterResource(Res.drawable.ic_film_negative_color)
+                                "Instant Consumer" -> painterResource(Res.drawable.ic_film_instant_consumer)
+                                else -> painterResource(Res.drawable.ic_film_print)
+                            },
+                            contentDescription = null,
+                            modifier = Modifier
+                                .height(80.dp)
+                                .width(80.dp),
+                        )
+                        Text(
+                            text = group,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Text(
+                            text = sortedAndGrouped[group]?.size.toString(),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                            contentDescription = "enter",
                         )
                     }
                 }
@@ -534,23 +923,6 @@ data class HomeScreen(
     }
 
 
-    @Composable
-    fun CategoryHeader(category: String) {
-        Surface(
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = category,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier
-                    .padding(horizontal = 18.dp, vertical = 3.dp)
-                    .fillMaxWidth()
-            )
-        }
-
-    }
-
     @OptIn(ExperimentalMaterialApi::class)
     @Composable
     fun FilmItem(
@@ -558,41 +930,114 @@ data class HomeScreen(
         selectedFilm: FilmLut?,
         onItemClick: (film: FilmLut) -> Unit,
         isFavorite: Boolean,
-        onFavoriteClick: () -> Unit
+        onFavoriteClick: () -> Unit,
+        thumbnails: Map<String, String> = emptyMap(),
+        modifier: Modifier = Modifier
     ) {
         val isSelected = film == selectedFilm
-        val backgroundColor =
-            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
+        val cardBorderColor = if (isSelected)
+            MaterialTheme.colorScheme.primary
+        else
+            MaterialTheme.colorScheme.surfaceVariant
 
-        Surface(
-            color = backgroundColor,
+        OutlinedCard(
+            modifier = modifier
+                .height(getScreenHeight() * 0.25f)
+                .padding(4.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(
+                    BorderStroke(
+                        width = if (isSelected) 2.dp else 1.dp,
+                        color = cardBorderColor
+                    )
+                ),
+            colors = CardDefaults.outlinedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
             onClick = { onItemClick(film) }
         ) {
-            Row(
-                modifier = Modifier.padding(vertical = 12.dp).fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))
+
             ) {
-                Image(
-                    painter = rememberImagePainter(GITHUB_BASE_URL + film.image_url),
-                    contentDescription = film.name,
-                    modifier = Modifier.height(64.dp).width(114.dp),
-                    contentScale = ContentScale.Crop
-                )
-                Text(
-                    text = film.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
-                )
-                IconButton(onClick = onFavoriteClick) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites"
+                // Thumbnail container
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(4f)
+                ) {
+                    // Use the thumbnail if available, otherwise fall back to the GitHub image
+                    val thumbnailPath = thumbnails[film.lut_name]
+                    if (thumbnailPath.isNullOrEmpty().not()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalPlatformContext.current)
+                                .data("$systemTemporaryPath/$THUMBNAILS_DIR/$thumbnailPath")
+                                .crossfade(true)
+                                .memoryCachePolicy(CachePolicy.DISABLED)
+                                .diskCachePolicy(CachePolicy.DISABLED)
+                                .build(),
+                            placeholder = painterResource(Res.drawable.image_24),
+                            fallback = painterResource(Res.drawable.image_24),
+                            error = painterResource(Res.drawable.image_24),
+                            contentDescription = film.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))
+
+                        )
+                    } else {
+                        // Fallback to GitHub image
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalPlatformContext.current)
+                                .data("${GITHUB_BASE_URL}${film.image_url}")
+                                .crossfade(true)
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .build(),
+                            contentDescription = film.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    // Favorite button overlaid on the top right of the image
+                    IconButton(
+                        onClick = onFavoriteClick,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(18.dp)
+                            .size(22.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                RoundedCornerShape(12.dp)
+                            )
+                    ) {
+                        Icon(
+                            modifier = Modifier.size(18.dp),
+                            imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                            tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                // Film name
+                Box(
+                    modifier = Modifier.weight(1F).clip(RoundedCornerShape(12.dp))
+                ) {
+                    Text(
+                        text = film.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .fillMaxWidth(),
+                        textAlign = TextAlign.Center
                     )
                 }
             }
         }
     }
-
 
 }
 
