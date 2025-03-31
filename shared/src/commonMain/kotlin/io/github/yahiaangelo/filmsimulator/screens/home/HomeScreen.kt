@@ -51,6 +51,7 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.PrimaryTabRow
@@ -750,7 +751,7 @@ data class HomeScreen(
         onDismissRequest: () -> Unit
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().background(color = MaterialTheme.colorScheme.background),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1003,8 +1004,8 @@ data class HomeScreen(
                         onClick = onFavoriteClick,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(8.dp)
-                            .size(16.dp)
+                            .padding(18.dp)
+                            .size(22.dp)
                             .background(
                                 MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
                                 RoundedCornerShape(12.dp)
