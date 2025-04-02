@@ -23,9 +23,11 @@ import io.github.yahiaangelo.filmsimulator.util.fixImageOrientation
 import io.github.yahiaangelo.filmsimulator.util.supportedImageExtensions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
@@ -38,6 +40,7 @@ import util.createDirectory
 import util.readImageFile
 import util.saveImageFile
 import util.saveImageToGallery
+import kotlin.coroutines.cancellation.CancellationException
 
 val homeScreenModule = module {
     factory { HomeScreenModel(get(), get(), get()) }
@@ -123,6 +126,7 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
     private val _editedImage: MutableStateFlow<String?> = MutableStateFlow(null)
     private val _currentAdjustments: MutableStateFlow<ImageAdjustments> = MutableStateFlow(ImageAdjustments())
     private val shaderExporter = ShaderExporter()
+    private var currentThumbnailJob: Job? = null
 
 
 
@@ -227,8 +231,11 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
 
 
     fun generateThumbnailsForGroup(category: String) {
+        // Cancel previous job if exists
+        currentThumbnailJob?.cancel()
+
         _originalImage.value?.let { originalImage ->
-            screenModelScope.launch {
+            currentThumbnailJob = screenModelScope.launch {
                 try {
                     // Create thumbnails directory if it doesn't exist
                     createDirectory(THUMBNAILS_DIR)
@@ -238,18 +245,17 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
 
                     for (film in films) {
                         // Skip if thumbnail already exists
-                        if (thumbnails.containsKey(film.lut_name)) continue
+                        if (thumbnails.containsKey(film.lut_name) || !isActive) continue
 
                         // Generate thumbnail
                         val thumbnailPath = repository.generateLutThumbnail(film, originalImage)
                         thumbnails[film.lut_name] = thumbnailPath
                         updateUiState { it.copy(filmThumbnails = thumbnails.toMap()) }
-
                     }
 
                     updateUiState { it.copy(filmThumbnails = thumbnails.toMap()) }
                 } catch (e: Exception) {
-                    updateUiState { it.copy(userMessage = "Error generating thumbnails: ${e.message}") }
+                    if (e is CancellationException) throw e
                 } finally {
                     updateUiState { it.copy(isLoading = false) }
                 }
