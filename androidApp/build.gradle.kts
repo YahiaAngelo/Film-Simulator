@@ -49,5 +49,4 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.koin.android)
-    implementation (libs.ffmpeg.kit.min)
 }

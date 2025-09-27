@@ -1,7 +1,6 @@
 package util
 
-import cocoapods.ffmpeg_kit_ios_min.FFmpegKit
-import cocoapods.ffmpeg_kit_ios_min.ReturnCode
+import io.github.yahiaangelo.filmsimulator.util.OptimizedLUTProcessor
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -12,22 +11,25 @@ actual suspend fun apply3dLutAsync(inputFile: String, lutFile: String, outputFil
     val inputFileDir = "$systemTemporaryPath/$inputFile"
     val outputFileDir = if (isThumbnail) "$systemTemporaryPath/$THUMBNAILS_DIR/$outputFile" else "$systemTemporaryPath/$outputFile"
     val lutFileDir = "$systemTemporaryPath/$lutFile"
-    val outputSize = if (isThumbnail) ",scale=320:-1" else ""
 
     deleteFile(outputFileDir)
     withContext(Dispatchers.IO) {
-        FFmpegKit.executeAsync("-i $inputFileDir -vf lut3d=$lutFileDir$outputSize -q:v 1 $outputFileDir") { session ->
-            if (ReturnCode.isSuccess(session?.getReturnCode())) {
-                // SUCCESS
-                onComplete()
+        try {
+            val processor = OptimizedLUTProcessor()
+            val success = processor.applyLUT(
+                inputPath = inputFileDir,
+                outputPath = outputFileDir,
+                lutPath = lutFileDir,
+                createThumbnail = isThumbnail
+            )
 
-            } else if (ReturnCode.isCancel(session?.getReturnCode())) {
-                // CANCEL
-                onError("ffmpeg canceled by user")
+            if (success) {
+                onComplete()
             } else {
-                // FAILURE
-                onError("ffmpeg failed, unsupported file format")
+                onError("Metal LUT processing failed")
             }
+        } catch (e: Exception) {
+            onError("Metal LUT processing error: ${e.message}")
         }
     }
 }
@@ -42,11 +44,20 @@ actual suspend fun apply3dLut(
     val inputFileDir = "$systemTemporaryPath/$inputFile"
     val outputFileDir = if (isThumbnail) "$systemTemporaryPath/$THUMBNAILS_DIR/$outputFile" else "$systemTemporaryPath/$outputFile"
     val lutFileDir = "$systemTemporaryPath/$lutFile"
-    val outputSize = if (isThumbnail) ",scale=320:-1" else ""
 
     deleteFile(outputFileDir)
 
-    return ReturnCode.isSuccess(FFmpegKit.execute("-i $inputFileDir -vf lut3d=$lutFileDir$outputSize -q:v 1 $outputFileDir")?.getReturnCode())
+    return try {
+        val processor = OptimizedLUTProcessor()
+        processor.applyLUT(
+            inputPath = inputFileDir,
+            outputPath = outputFileDir,
+            lutPath = lutFileDir,
+            createThumbnail = isThumbnail
+        )
+    } catch (e: Exception) {
+        false
+    }
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -62,20 +73,21 @@ actual suspend fun addFilmGrain(
 
     deleteFile(outputFileDir)
     withContext(Dispatchers.IO) {
-        FFmpegKit.executeAsync("-i $inputFileDir -vf noise=c0s=$intensity:c0f=t+u -q:v 1 $outputFileDir") { session ->
-            if (session != null) {
-                if (ReturnCode.isSuccess(session.getReturnCode())) {
-                    // SUCCESS
-                    onComplete()
+        try {
+            val processor = OptimizedLUTProcessor()
+            val success = processor.addGrain(
+                inputPath = inputFileDir,
+                outputPath = outputFileDir,
+                intensity = intensity
+            )
 
-                } else if (ReturnCode.isCancel(session.getReturnCode())) {
-                    // CANCEL
-                    onError("ffmpeg canceled by user")
-                } else {
-                    // FAILURE
-                    onError("ffmpeg failed, unsupported file format")
-                }
+            if (success) {
+                onComplete()
+            } else {
+                onError("Metal grain processing failed")
             }
+        } catch (e: Exception) {
+            onError("Metal grain processing error: ${e.message}")
         }
     }
 }
@@ -86,20 +98,8 @@ actual suspend fun applyFilters(
     onComplete: () -> Unit,
     onError: (String) -> Unit
 ) {
-
-    withContext(Dispatchers.IO) {
-        FFmpegKit.executeAsync(command) { session ->
-            if (ReturnCode.isSuccess(session?.getReturnCode())) {
-                // SUCCESS
-                onComplete()
-
-            } else if (ReturnCode.isCancel(session?.getReturnCode())) {
-                // CANCEL
-                onError("ffmpeg canceled by user")
-            } else {
-                // FAILURE
-                onError("ffmpeg failed, unsupported file format")
-            }
-        }
-    }
+    // This function was for custom FFmpeg commands
+    // For now, we'll just call onError since we've replaced specific functions
+    // In the future, you could parse the command and route to appropriate native functions
+    onError("Custom filters not supported in native implementation")
 }

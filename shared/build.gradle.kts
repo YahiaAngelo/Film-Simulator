@@ -42,11 +42,6 @@ kotlin {
             baseName = "shared"
             isStatic = true
         }
-        pod("ffmpeg-kit-ios-min") {
-            moduleName = "ffmpegkit"
-            version = "6.0"
-            extraOpts = listOf("-compiler-option", "-fmodules")
-        }
     }
 
     sourceSets {
@@ -61,7 +56,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.koin.android)
             implementation(libs.android.driver)
-            implementation (libs.ffmpeg.kit.min)
         }
 
         commonMain.dependencies {
@@ -109,6 +103,32 @@ kotlin {
             implementation(libs.native.driver)
             implementation(libs.ktor.client.darwin)
         }
+
+        iosMain.dependencies {
+            // Nothing specific needed - Metal is part of the platform
+        }
+
+        // Configure iOS targets with Metal framework
+        targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
+            if (konanTarget.name.startsWith("ios")) {
+                compilations.getByName("main") {
+                    cinterops {
+                        val metal by creating {
+                            defFile(project.file("src/iosMain/interop/metal.def"))
+                        }
+                    }
+                }
+            }
+
+            binaries.all {
+                if (target.name.startsWith("ios")) {
+                    linkerOpts += "-framework"
+                    linkerOpts += "Metal"
+                    linkerOpts += "-framework"
+                    linkerOpts += "MetalKit"
+                }
+            }
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
@@ -122,9 +142,20 @@ android {
     compileSdk = 35
     defaultConfig {
         minSdk = 24
+
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64"))
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/androidMain/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 }

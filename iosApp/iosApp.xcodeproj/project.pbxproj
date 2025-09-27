@@ -104,7 +104,6 @@
 				7555FF77242A565900829871 /* Sources */,
 				7555FF79242A565900829871 /* Resources */,
 				5C38A09EF912860CDD16CE06 /* Frameworks */,
-				EA41BBBB47C5534D16BB20D2 /* [CP] Embed Pods Frameworks */,
 				A044CEDEF1725806CF729649 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
@@ -200,23 +199,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		EA41BBBB47C5534D16BB20D2 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -364,7 +346,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 15;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
-				DEVELOPMENT_TEAM = 8T6AKJB57Z;
+				DEVELOPMENT_TEAM = "${TEAM_ID}";
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = iosApp/Info.plist;
@@ -384,30 +366,6 @@
 					"-l\"c++\"",
 					"-l\"iconv\"",
 					"-l\"z\"",
-					"-framework",
-					"\"AVFoundation\"",
-					"-framework",
-					"\"AudioToolbox\"",
-					"-framework",
-					"\"CoreMedia\"",
-					"-framework",
-					"\"VideoToolbox\"",
-					"-framework",
-					"\"ffmpegkit\"",
-					"-framework",
-					"\"libavcodec\"",
-					"-framework",
-					"\"libavdevice\"",
-					"-framework",
-					"\"libavfilter\"",
-					"-framework",
-					"\"libavformat\"",
-					"-framework",
-					"\"libavutil\"",
-					"-framework",
-					"\"libswresample\"",
-					"-framework",
-					"\"libswscale\"",
 					"-framework",
 					"\"shared\"",
 					"-lsqlite3",
@@ -447,30 +405,6 @@
 					"-l\"c++\"",
 					"-l\"iconv\"",
 					"-l\"z\"",
-					"-framework",
-					"\"AVFoundation\"",
-					"-framework",
-					"\"AudioToolbox\"",
-					"-framework",
-					"\"CoreMedia\"",
-					"-framework",
-					"\"VideoToolbox\"",
-					"-framework",
-					"\"ffmpegkit\"",
-					"-framework",
-					"\"libavcodec\"",
-					"-framework",
-					"\"libavdevice\"",
-					"-framework",
-					"\"libavfilter\"",
-					"-framework",
-					"\"libavformat\"",
-					"-framework",
-					"\"libavutil\"",
-					"-framework",
-					"\"libswresample\"",
-					"-framework",
-					"\"libswscale\"",
 					"-framework",
 					"\"shared\"",
 					"-lsqlite3",
