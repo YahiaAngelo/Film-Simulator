@@ -105,29 +105,7 @@ kotlin {
         }
 
         iosMain.dependencies {
-            // Nothing specific needed - Metal is part of the platform
-        }
-
-        // Configure iOS targets with Metal framework
-        targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget> {
-            if (konanTarget.name.startsWith("ios")) {
-                compilations.getByName("main") {
-                    cinterops {
-                        val metal by creating {
-                            defFile(project.file("src/iosMain/interop/metal.def"))
-                        }
-                    }
-                }
-            }
-
-            binaries.all {
-                if (target.name.startsWith("ios")) {
-                    linkerOpts += "-framework"
-                    linkerOpts += "Metal"
-                    linkerOpts += "-framework"
-                    linkerOpts += "MetalKit"
-                }
-            }
+            // iOS-specific dependencies
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

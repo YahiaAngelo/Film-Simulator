@@ -1,6 +1,6 @@
 package util
 
-import io.github.yahiaangelo.filmsimulator.util.OptimizedLUTProcessor
+import io.github.yahiaangelo.filmsimulator.util.CoreImageLUTProcessor
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -15,7 +15,7 @@ actual suspend fun apply3dLutAsync(inputFile: String, lutFile: String, outputFil
     deleteFile(outputFileDir)
     withContext(Dispatchers.IO) {
         try {
-            val processor = OptimizedLUTProcessor()
+            val processor = CoreImageLUTProcessor()
             val success = processor.applyLUT(
                 inputPath = inputFileDir,
                 outputPath = outputFileDir,
@@ -26,10 +26,10 @@ actual suspend fun apply3dLutAsync(inputFile: String, lutFile: String, outputFil
             if (success) {
                 onComplete()
             } else {
-                onError("Metal LUT processing failed")
+                onError("Core Image LUT processing failed")
             }
         } catch (e: Exception) {
-            onError("Metal LUT processing error: ${e.message}")
+            onError("Core Image LUT processing error: ${e.message}")
         }
     }
 }
@@ -48,7 +48,7 @@ actual suspend fun apply3dLut(
     deleteFile(outputFileDir)
 
     return try {
-        val processor = OptimizedLUTProcessor()
+        val processor = CoreImageLUTProcessor()
         processor.applyLUT(
             inputPath = inputFileDir,
             outputPath = outputFileDir,
@@ -74,7 +74,7 @@ actual suspend fun addFilmGrain(
     deleteFile(outputFileDir)
     withContext(Dispatchers.IO) {
         try {
-            val processor = OptimizedLUTProcessor()
+            val processor = CoreImageLUTProcessor()
             val success = processor.addGrain(
                 inputPath = inputFileDir,
                 outputPath = outputFileDir,
@@ -84,10 +84,10 @@ actual suspend fun addFilmGrain(
             if (success) {
                 onComplete()
             } else {
-                onError("Metal grain processing failed")
+                onError("Core Image grain processing failed")
             }
         } catch (e: Exception) {
-            onError("Metal grain processing error: ${e.message}")
+            onError("Core Image grain processing error: ${e.message}")
         }
     }
 }

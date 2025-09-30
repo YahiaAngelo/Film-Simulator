@@ -18,3 +18,8 @@ dependencyResolutionManagement {
 rootProject.name = "Film_Simulator"
 include(":androidApp")
 include(":shared")
+
+// Explicitly exclude iOS directories from Gradle
+gradle.beforeProject {
+    // Ignore iOS-specific directories
+}

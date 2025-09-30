@@ -1,4 +1,0 @@
-language = Objective-C
-headers = Metal/Metal.h MetalKit/MetalKit.h
-compilerOpts = -framework Metal -framework MetalKit
-linkerOpts = -framework Metal -framework MetalKit
