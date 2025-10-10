@@ -1,10 +1,12 @@
 package util
 
 import io.github.yahiaangelo.filmsimulator.util.CoreImageLUTProcessor
+import io.github.yahiaangelo.filmsimulator.util.NativeImageProcessor
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
+import platform.Foundation.NSLog
 
 @OptIn(ExperimentalForeignApi::class)
 actual suspend fun apply3dLutAsync(inputFile: String, lutFile: String, outputFile: String, isThumbnail: Boolean, onComplete: () -> Unit, onError: (String) -> Unit) {
@@ -15,21 +17,55 @@ actual suspend fun apply3dLutAsync(inputFile: String, lutFile: String, outputFil
     deleteFile(outputFileDir)
     withContext(Dispatchers.IO) {
         try {
-            val processor = CoreImageLUTProcessor()
-            val success = processor.applyLUT(
-                inputPath = inputFileDir,
-                outputPath = outputFileDir,
-                lutPath = lutFileDir,
-                createThumbnail = isThumbnail
-            )
+            var success = false
+
+            // Try native Metal processing first
+            NSLog("[FFMPEGHandler.ios] Attempting native Metal processing...")
+
+            val nativeProcessor = NativeImageProcessor()
+            if (nativeProcessor.isNativeProcessingAvailable()) {
+                NSLog("[FFMPEGHandler.ios] ✓ Native Metal processing is available")
+
+                success = nativeProcessor.processImageWithLUT(
+                    inputPath = inputFileDir,
+                    outputPath = outputFileDir,
+                    lutPath = lutFileDir,
+                    createThumbnail = isThumbnail
+                )
+
+                if (success) {
+                    NSLog("[FFMPEGHandler.ios] ✓ Successfully processed with Metal")
+                } else {
+                    NSLog("[FFMPEGHandler.ios] Metal processing returned false, falling back to Core Image")
+                }
+            } else {
+                NSLog("[FFMPEGHandler.ios] ✗ Native Metal processing not available, using Core Image")
+            }
+
+            // If Metal didn't work, fall back to Core Image
+            if (!success) {
+                NSLog("[FFMPEGHandler.ios] Using Core Image processor...")
+                val processor = CoreImageLUTProcessor()
+                success = processor.applyLUT(
+                    inputPath = inputFileDir,
+                    outputPath = outputFileDir,
+                    lutPath = lutFileDir,
+                    createThumbnail = isThumbnail
+                )
+
+                if (success) {
+                    NSLog("[FFMPEGHandler.ios] ✓ Successfully processed with Core Image")
+                }
+            }
 
             if (success) {
                 onComplete()
             } else {
-                onError("Core Image LUT processing failed")
+                onError("LUT processing failed")
             }
         } catch (e: Exception) {
-            onError("Core Image LUT processing error: ${e.message}")
+            NSLog("[FFMPEGHandler.ios] Processing error: ${e.message}")
+            onError("LUT processing error: ${e.message}")
         }
     }
 }
@@ -48,14 +84,33 @@ actual suspend fun apply3dLut(
     deleteFile(outputFileDir)
 
     return try {
-        val processor = CoreImageLUTProcessor()
-        processor.applyLUT(
-            inputPath = inputFileDir,
-            outputPath = outputFileDir,
-            lutPath = lutFileDir,
-            createThumbnail = isThumbnail
-        )
+        var success = false
+
+        // Try native Metal processing first
+        val nativeProcessor = NativeImageProcessor()
+        if (nativeProcessor.isNativeProcessingAvailable()) {
+            success = nativeProcessor.processImageWithLUT(
+                inputPath = inputFileDir,
+                outputPath = outputFileDir,
+                lutPath = lutFileDir,
+                createThumbnail = isThumbnail
+            )
+        }
+
+        // Fall back to Core Image if Metal didn't work
+        if (!success) {
+            val processor = CoreImageLUTProcessor()
+            success = processor.applyLUT(
+                inputPath = inputFileDir,
+                outputPath = outputFileDir,
+                lutPath = lutFileDir,
+                createThumbnail = isThumbnail
+            )
+        }
+
+        success
     } catch (e: Exception) {
+        NSLog("[FFMPEGHandler.ios] Processing error (sync): ${e.message}")
         false
     }
 }

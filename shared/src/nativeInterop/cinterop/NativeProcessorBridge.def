@@ -1,0 +1,7 @@
+language = Objective-C
+package = io.github.yahiaangelo.filmsimulator.bridge
+headers = NativeProcessorBridge.h
+headerFilter = NativeProcessorBridge.h
+compilerOpts = -framework Foundation -framework UIKit
+staticLibraries = libNativeProcessorBridge.a
+libraryPaths = build

@@ -4,6 +4,16 @@
 #include <algorithm>
 #include <cmath>
 #include <android/log.h>
+#include <thread>
+#include <vector>
+
+#ifdef __ARM_NEON
+#include <arm_neon.h>
+#endif
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 #define LOG_TAG "LUTProcessor"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -175,30 +185,50 @@ bool processImageWithLUT(
 
     const int totalPixels = width * height;
 
-    // Process each pixel - simplified to avoid complex thumbnail scaling
-    for (int i = 0; i < totalPixels; ++i) {
-        int pixelIndex = i * 4; // RGBA format
+    // Use OpenMP parallelization if available
+    #ifdef _OPENMP
+    const int numThreads = std::min(omp_get_max_threads(), 8);
+    omp_set_num_threads(numThreads);
+    LOGI("Processing with %d threads", numThreads);
 
-        // Bounds check
-        if (pixelIndex + 3 >= totalPixels * 4) {
-            LOGE("Pixel index out of bounds: %d", pixelIndex);
-            break;
+    #pragma omp parallel for schedule(dynamic, 1024)
+    #endif
+    for (int i = 0; i < totalPixels; ++i) {
+        const int pixelIndex = i * 4; // RGBA format
+
+        // Prefetch next cache line for better performance
+        #ifdef __builtin_prefetch
+        if (i < totalPixels - 16) {
+            __builtin_prefetch(&inputPixels[pixelIndex + 64], 0, 1);
         }
+        #endif
+
+        // Use constant for division optimization
+        constexpr float inv255 = 1.0f / 255.0f;
 
         // Convert to normalized RGB
-        RGB inputRGB(
-            inputPixels[pixelIndex] / 255.0f,
-            inputPixels[pixelIndex + 1] / 255.0f,
-            inputPixels[pixelIndex + 2] / 255.0f
-        );
+        const float r = inputPixels[pixelIndex] * inv255;
+        const float g = inputPixels[pixelIndex + 1] * inv255;
+        const float b = inputPixels[pixelIndex + 2] * inv255;
+
+        RGB inputRGB(r, g, b);
 
         // Apply LUT
         RGB outputRGB = lut.applyLUT(inputRGB);
 
+        // Convert back using multiplication instead of division
+        constexpr float scale255 = 255.0f;
+
         // Clamp values to valid range and write to output
-        outputPixels[pixelIndex] = static_cast<uint8_t>(std::max(0.0f, std::min(255.0f, outputRGB.r * 255.0f)));
-        outputPixels[pixelIndex + 1] = static_cast<uint8_t>(std::max(0.0f, std::min(255.0f, outputRGB.g * 255.0f)));
-        outputPixels[pixelIndex + 2] = static_cast<uint8_t>(std::max(0.0f, std::min(255.0f, outputRGB.b * 255.0f)));
+        outputPixels[pixelIndex] = static_cast<uint8_t>(
+            std::max(0.0f, std::min(255.0f, outputRGB.r * scale255))
+        );
+        outputPixels[pixelIndex + 1] = static_cast<uint8_t>(
+            std::max(0.0f, std::min(255.0f, outputRGB.g * scale255))
+        );
+        outputPixels[pixelIndex + 2] = static_cast<uint8_t>(
+            std::max(0.0f, std::min(255.0f, outputRGB.b * scale255))
+        );
         outputPixels[pixelIndex + 3] = inputPixels[pixelIndex + 3]; // Preserve alpha
     }
 

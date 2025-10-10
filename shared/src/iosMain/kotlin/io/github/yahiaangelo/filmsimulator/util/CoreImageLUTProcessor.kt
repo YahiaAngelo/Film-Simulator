@@ -6,7 +6,6 @@ import platform.Foundation.*
 import platform.CoreImage.*
 import platform.CoreGraphics.*
 import platform.posix.*
-import kotlin.math.*
 
 /**
  * GPU-optimized LUT processor using Core Image filters
@@ -17,7 +16,7 @@ class CoreImageLUTProcessor {
 
     private val ciContext: CIContext by lazy {
         // Create CIContext with GPU acceleration
-        // Core Image will automatically use the best available rendering option (GPU when available)
+        // Core Image will automatically use Metal when available
         CIContext()
     }
 
@@ -88,9 +87,85 @@ class CoreImageLUTProcessor {
     }
 
     /**
-     * Process image using manual trilinear interpolation matching Android's implementation exactly
+     * Process image using optimized approach based on image size
      */
     private fun processImageWithGPU(
+        inputImage: UIImage,
+        lut: LUT3D,
+        createThumbnail: Boolean
+    ): UIImage? {
+        // Always use manual processing for now since CIColorCube has color mapping issues
+        // The manual method is slower but produces correct colors
+        return processImageManually(inputImage, lut, createThumbnail)
+    }
+
+    /**
+     * Process image using Core Image with corrected LUT data ordering
+     */
+    private fun processImageWithCoreImage(
+        inputImage: UIImage,
+        lut: LUT3D
+    ): UIImage? {
+        // Convert UIImage to CIImage for GPU processing
+        val ciImage = CIImage.imageWithCGImage(inputImage.CGImage ?: return null)
+
+        // Use Core Image's built-in Color Cube filter for GPU acceleration
+        val filter = CIFilter.filterWithName("CIColorCube") ?: return null
+
+        // Prepare LUT data for Core Image ColorCube filter
+        val cubeDataSize = lut.size * lut.size * lut.size * 4 * 4 // RGBA floats
+        memScoped {
+            val cubeData = allocArray<FloatVar>(cubeDataSize / 4)
+
+            // Core Image expects data in a specific order
+            // We need to reorder the LUT data to match CIColorCube's expectations
+            var index = 0
+
+            // CIColorCube iterates with blue varying fastest, green next, red slowest
+            // So we iterate: blue (inner), green (middle), red (outer)
+            for (b in 0 until lut.size) {
+                for (g in 0 until lut.size) {
+                    for (r in 0 until lut.size) {
+                        // Look up the value from our LUT using standard cube file ordering
+                        val lutIndex = (r + g * lut.size + b * lut.size * lut.size) * 3
+
+                        if (lutIndex + 2 < lut.data.size) {
+                            cubeData[index++] = lut.data[lutIndex]     // R output
+                            cubeData[index++] = lut.data[lutIndex + 1] // G output
+                            cubeData[index++] = lut.data[lutIndex + 2] // B output
+                            cubeData[index++] = 1.0f                   // A
+                        } else {
+                            // Identity mapping as fallback
+                            cubeData[index++] = r.toFloat() / (lut.size - 1).toFloat()
+                            cubeData[index++] = g.toFloat() / (lut.size - 1).toFloat()
+                            cubeData[index++] = b.toFloat() / (lut.size - 1).toFloat()
+                            cubeData[index++] = 1.0f
+                        }
+                    }
+                }
+            }
+
+            val nsData = NSData.dataWithBytes(cubeData, cubeDataSize.toULong())
+
+            // Set filter parameters
+            filter.setValue(ciImage, forKey = "inputImage")
+            filter.setValue(nsData, forKey = "inputCubeData")
+            filter.setValue(NSNumber.numberWithInt(lut.size), forKey = "inputCubeDimension")
+        }
+
+        val outputCIImage = filter.outputImage ?: return null
+
+        // Render with GPU context
+        val extent = outputCIImage.extent
+        val cgImage = ciContext.createCGImage(outputCIImage, fromRect = extent) ?: return null
+
+        return UIImage.imageWithCGImage(cgImage)
+    }
+
+    /**
+     * Process image using manual pixel manipulation for accuracy
+     */
+    private fun processImageManually(
         inputImage: UIImage,
         lut: LUT3D,
         createThumbnail: Boolean
@@ -101,7 +176,7 @@ class CoreImageLUTProcessor {
 
         // Calculate output dimensions
         val (outputWidth, outputHeight) = if (createThumbnail) {
-            val thumbnailWidth = min(320, inputWidth)
+            val thumbnailWidth = kotlin.math.min(320, inputWidth)
             val thumbnailHeight = (thumbnailWidth.toFloat() * inputHeight / inputWidth).toInt()
             thumbnailWidth to thumbnailHeight
         } else {
@@ -132,6 +207,7 @@ class CoreImageLUTProcessor {
             CGContextDrawImage(context, rect, cgImage)
 
             // Apply LUT using trilinear interpolation matching Android exactly
+            // Process pixels in chunks for better cache performance
             for (y in 0 until outputHeight) {
                 for (x in 0 until outputWidth) {
                     val pixelIndex = (y * outputWidth + x) * 4
@@ -190,13 +266,13 @@ class CoreImageLUTProcessor {
         val bf = bClamped * scale
 
         // Get integer indices
-        val r0 = floor(rf).toInt()
-        val g0 = floor(gf).toInt()
-        val b0 = floor(bf).toInt()
+        val r0 = kotlin.math.floor(rf).toInt()
+        val g0 = kotlin.math.floor(gf).toInt()
+        val b0 = kotlin.math.floor(bf).toInt()
 
-        val r1 = min(r0 + 1, size - 1)
-        val g1 = min(g0 + 1, size - 1)
-        val b1 = min(b0 + 1, size - 1)
+        val r1 = kotlin.math.min(r0 + 1, size - 1)
+        val g1 = kotlin.math.min(g0 + 1, size - 1)
+        val b1 = kotlin.math.min(b0 + 1, size - 1)
 
         // Get fractional parts for interpolation
         val rd = rf - r0
@@ -362,7 +438,12 @@ class CoreImageLUTProcessor {
                     val values = parts.mapNotNull { it.trim().toFloatOrNull() }
 
                     if (values.size >= 3) {
-                        // Store RGB values
+                        // Store RGB values exactly as they appear in the file
+                        // The cube file stores values in the order:
+                        // (0,0,0), (1,0,0), (2,0,0), ... (size-1,0,0)  <- red varies
+                        // (0,1,0), (1,1,0), (2,1,0), ... (size-1,1,0)  <- then green varies
+                        // ...
+                        // (0,0,1), (1,0,1), (2,0,1), ... (size-1,0,1)  <- then blue varies
                         lutData.add(values[0])
                         lutData.add(values[1])
                         lutData.add(values[2])

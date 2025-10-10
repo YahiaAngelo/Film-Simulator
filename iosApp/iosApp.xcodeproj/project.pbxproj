@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00D12DE02E8FEE06007047FD /* LUTProcessor.metal in Sources */ = {isa = PBXBuildFile; fileRef = 00D12DD72E8FEBF6007047FD /* LUTProcessor.metal */; };
+		00D12DE12E8FEE0A007047FD /* MetalLUTProcessor.m in Sources */ = {isa = PBXBuildFile; fileRef = 00D12DD92E8FEBF6007047FD /* MetalLUTProcessor.m */; };
+		00D12DE22E8FEE0C007047FD /* MetalLUTProcessorWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00D12DDA2E8FEBF6007047FD /* MetalLUTProcessorWrapper.swift */; };
 		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
 		058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
@@ -15,6 +18,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		00D12DD72E8FEBF6007047FD /* LUTProcessor.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = LUTProcessor.metal; sourceTree = "<group>"; };
+		00D12DD82E8FEBF6007047FD /* MetalLUTProcessor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MetalLUTProcessor.h; sourceTree = "<group>"; };
+		00D12DD92E8FEBF6007047FD /* MetalLUTProcessor.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MetalLUTProcessor.m; sourceTree = "<group>"; };
+		00D12DDA2E8FEBF6007047FD /* MetalLUTProcessorWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalLUTProcessorWrapper.swift; sourceTree = "<group>"; };
 		058557BA273AAA24004C7B11 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
@@ -81,6 +88,10 @@
 				7555FF8C242A565B00829871 /* Info.plist */,
 				2152FB032600AC8F00CF470E /* iOSApp.swift */,
 				058557D7273AAEEB004C7B11 /* Preview Content */,
+				00D12DD72E8FEBF6007047FD /* LUTProcessor.metal */,
+				00D12DD82E8FEBF6007047FD /* MetalLUTProcessor.h */,
+				00D12DD92E8FEBF6007047FD /* MetalLUTProcessor.m */,
+				00D12DDA2E8FEBF6007047FD /* MetalLUTProcessorWrapper.swift */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -104,7 +115,6 @@
 				7555FF77242A565900829871 /* Sources */,
 				7555FF79242A565900829871 /* Resources */,
 				5C38A09EF912860CDD16CE06 /* Frameworks */,
-				D8D2FCCD2B81B842D665B7FD /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -128,6 +138,7 @@
 				TargetAttributes = {
 					7555FF7A242A565900829871 = {
 						CreatedOnToolsVersion = 11.3.1;
+						LastSwiftMigration = 2600;
 					};
 				};
 			};
@@ -162,23 +173,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		D8D2FCCD2B81B842D665B7FD /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		EBC449CEF0D73F6722D89DD2 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -208,6 +202,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				00D12DE22E8FEE0C007047FD /* MetalLUTProcessorWrapper.swift in Sources */,
+				00D12DE12E8FEE0A007047FD /* MetalLUTProcessor.m in Sources */,
+				00D12DE02E8FEE06007047FD /* LUTProcessor.metal in Sources */,
 				2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */,
 				7555FF83242A565900829871 /* ContentView.swift in Sources */,
 			);
@@ -343,45 +340,7 @@
 			baseConfigurationReference = EFBCB1F3BC90B18D922FA611 /* Pods-iosApp.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 15;
-				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
-				DEVELOPMENT_TEAM = "${TEAM_ID}";
-				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				INFOPLIST_FILE = iosApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Film Simulator";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Allow the app to export the image to your Gallery";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 0.5.0;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					"-ObjC",
-					"-l\"bz2\"",
-					"-l\"c++\"",
-					"-l\"iconv\"",
-					"-l\"z\"",
-					"-framework",
-					"\"shared\"",
-					"-lsqlite3",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.yahiaangelo.filmsimulator.iosApp;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		7555FFA7242A565B00829871 /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = CAC6DA4966C203EF8E55EA4F /* Pods-iosApp.release.xcconfig */;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 15;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
@@ -411,6 +370,49 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.yahiaangelo.filmsimulator.iosApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "iosApp/iosApp-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7555FFA7242A565B00829871 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = CAC6DA4966C203EF8E55EA4F /* Pods-iosApp.release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 15;
+				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
+				DEVELOPMENT_TEAM = 8T6AKJB57Z;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = iosApp/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Film Simulator";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Allow the app to export the image to your Gallery";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.5.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-l\"bz2\"",
+					"-l\"c++\"",
+					"-l\"iconv\"",
+					"-l\"z\"",
+					"-framework",
+					"\"shared\"",
+					"-lsqlite3",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.yahiaangelo.filmsimulator.iosApp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "iosApp/iosApp-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

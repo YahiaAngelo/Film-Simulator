@@ -28,9 +28,26 @@ kotlin {
     compilerOptions {
         apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
     }
-    iosX64()
-    iosArm64()
-    iosSimulatorArm64()
+    // iOS targets with cinterop for NativeProcessorBridge
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.compilations.getByName("main") {
+            cinterops.create("NativeProcessorBridge") {
+                defFile = project.file("src/nativeInterop/cinterop/NativeProcessorBridge.def")
+                packageName = "io.github.yahiaangelo.filmsimulator.bridge"
+
+                // Include directories for headers
+                includeDirs.headerFilterOnly(project.file("../iosApp/iosApp"))
+                includeDirs.headerFilterOnly(project.file("src/nativeInterop/cinterop"))
+
+                // Add library path as extraOpts
+                extraOpts("-libraryPath", project.file("src/nativeInterop/cinterop/build").absolutePath)
+            }
+        }
+    }
 
     cocoapods {
         summary = "Some description for the Shared Module"
@@ -113,6 +130,18 @@ kotlin {
     }
 
     task("testClasses")
+}
+
+// Build static library for NativeProcessorBridge stub
+val buildNativeProcessorBridgeStub by tasks.registering(Exec::class) {
+    workingDir = project.file("src/nativeInterop/cinterop")
+    commandLine("bash", "build_stub.sh")
+    outputs.file(project.file("src/nativeInterop/cinterop/build/libNativeProcessorBridge.a"))
+}
+
+// Make cinterop tasks depend on the static library
+tasks.matching { it.name.contains("cinteropNativeProcessorBridge") }.configureEach {
+    dependsOn(buildNativeProcessorBridgeStub)
 }
 
 android {
