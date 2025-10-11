@@ -248,44 +248,72 @@
 }
 
 - (id<MTLTexture>)createTextureFromImage:(UIImage *)image {
+    NSLog(@"[MetalLUTProcessor] 📸 Creating texture from UIImage...");
+    NSLog(@"[MetalLUTProcessor]   Input image size: %.0fx%.0f", image.size.width, image.size.height);
+
     CGImageRef cgImage = image.CGImage;
-    if (!cgImage) {
+    if (cgImage) {
+        NSLog(@"[MetalLUTProcessor]   CGImage info:");
+        NSLog(@"[MetalLUTProcessor]     - Size: %zux%zu", CGImageGetWidth(cgImage), CGImageGetHeight(cgImage));
+        NSLog(@"[MetalLUTProcessor]     - Bits per pixel: %zu", CGImageGetBitsPerPixel(cgImage));
+        NSLog(@"[MetalLUTProcessor]     - Bits per component: %zu", CGImageGetBitsPerComponent(cgImage));
+        NSLog(@"[MetalLUTProcessor]     - Bytes per row: %zu", CGImageGetBytesPerRow(cgImage));
+
+        CGBitmapInfo bitmapInfo = CGImageGetBitmapInfo(cgImage);
+        CGImageAlphaInfo alphaInfo = bitmapInfo & kCGBitmapAlphaInfoMask;
+        NSLog(@"[MetalLUTProcessor]     - Alpha info: %u", alphaInfo);
+        NSLog(@"[MetalLUTProcessor]     - Byte order: %s",
+              (bitmapInfo & kCGBitmapByteOrderMask) == kCGBitmapByteOrder32Little ? "Little (BGRA)" :
+              (bitmapInfo & kCGBitmapByteOrderMask) == kCGBitmapByteOrder32Big ? "Big (RGBA)" : "Unknown");
+    }
+
+    // Use MTKTextureLoader which handles all pixel format conversions correctly
+    MTKTextureLoader *textureLoader = [[MTKTextureLoader alloc] initWithDevice:self.device];
+
+    NSDictionary *options = @{
+        MTKTextureLoaderOptionSRGB: @NO,  // Don't apply sRGB conversion
+        MTKTextureLoaderOptionTextureUsage: @(MTLTextureUsageShaderRead),
+        MTKTextureLoaderOptionTextureStorageMode: @(MTLStorageModeShared)
+    };
+
+    NSError *error = nil;
+    id<MTLTexture> texture = [textureLoader newTextureWithCGImage:cgImage
+                                                          options:options
+                                                            error:&error];
+
+    if (error) {
+        NSLog(@"[MetalLUTProcessor] ❌ ERROR: Failed to create texture from image: %@", error.localizedDescription);
         return nil;
     }
 
-    NSUInteger width = CGImageGetWidth(cgImage);
-    NSUInteger height = CGImageGetHeight(cgImage);
+    if (texture) {
+        NSString *formatName;
+        switch (texture.pixelFormat) {
+            case MTLPixelFormatBGRA8Unorm: formatName = @"BGRA8Unorm"; break;
+            case MTLPixelFormatRGBA8Unorm: formatName = @"RGBA8Unorm"; break;
+            case MTLPixelFormatBGRA8Unorm_sRGB: formatName = @"BGRA8Unorm_sRGB"; break;
+            case MTLPixelFormatRGBA8Unorm_sRGB: formatName = @"RGBA8Unorm_sRGB"; break;
+            default: formatName = [NSString stringWithFormat:@"Unknown (%lu)", (unsigned long)texture.pixelFormat]; break;
+        }
+        NSLog(@"[MetalLUTProcessor] ✅ Created texture:");
+        NSLog(@"[MetalLUTProcessor]   Format: %@ (%lu)", formatName, (unsigned long)texture.pixelFormat);
+        NSLog(@"[MetalLUTProcessor]   Size: %lux%lu", (unsigned long)texture.width, (unsigned long)texture.height);
 
-    MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
-    textureDescriptor.pixelFormat = MTLPixelFormatRGBA8Unorm;
-    textureDescriptor.width = width;
-    textureDescriptor.height = height;
-    textureDescriptor.usage = MTLTextureUsageShaderRead;
+        // Read first few pixels to verify colors
+        NSUInteger bytesPerRow = texture.width * 4;
+        void *testData = malloc(bytesPerRow * 4); // First 4 rows
+        [texture getBytes:testData
+              bytesPerRow:bytesPerRow
+               fromRegion:MTLRegionMake2D(0, 0, texture.width, 4)
+              mipmapLevel:0];
 
-    id<MTLTexture> texture = [self.device newTextureWithDescriptor:textureDescriptor];
+        unsigned char *pixels = (unsigned char *)testData;
+        NSLog(@"[MetalLUTProcessor]   Sample pixels (first pixel):");
+        NSLog(@"[MetalLUTProcessor]     Byte 0: %d, Byte 1: %d, Byte 2: %d, Byte 3: %d",
+              pixels[0], pixels[1], pixels[2], pixels[3]);
 
-    NSUInteger bytesPerRow = width * 4;
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-
-    void *rawData = calloc(height, bytesPerRow);
-    CGContextRef context = CGBitmapContextCreate(rawData,
-                                                 width,
-                                                 height,
-                                                 8,
-                                                 bytesPerRow,
-                                                 colorSpace,
-                                                 kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
-
-    CGContextDrawImage(context, CGRectMake(0, 0, width, height), cgImage);
-
-    [texture replaceRegion:MTLRegionMake2D(0, 0, width, height)
-               mipmapLevel:0
-                 withBytes:rawData
-               bytesPerRow:bytesPerRow];
-
-    CGContextRelease(context);
-    CGColorSpaceRelease(colorSpace);
-    free(rawData);
+        free(testData);
+    }
 
     return texture;
 }
@@ -313,16 +341,26 @@
     NSUInteger dataSize = size * size * size * 4 * sizeof(float);
     float *rawData = malloc(dataSize);
 
+    // Fill 3D texture in the order that Metal expects for sampling
+    // Metal's 3D texture coordinates are (R, G, B) when sampling
+    // The data must be laid out so that when we sample with coords (r, g, b),
+    // we get the correct LUT value.
+    //
+    // Metal 3D textures are laid out with the first dimension (width/R) changing fastest,
+    // then second (height/G), then third (depth/B).
+    // This matches our LUT data which is indexed as: r + g * size + b * size * size
+
     NSUInteger index = 0;
-    for (NSUInteger b = 0; b < size; b++) {
-        for (NSUInteger g = 0; g < size; g++) {
-            for (NSUInteger r = 0; r < size; r++) {
+    for (NSUInteger b = 0; b < size; b++) {        // Depth (blue)
+        for (NSUInteger g = 0; g < size; g++) {    // Height (green)
+            for (NSUInteger r = 0; r < size; r++) {    // Width (red) - fastest changing
+                // LUT data is stored in R-major order: r + g * size + b * size * size
                 NSUInteger lutIndex = r + g * size + b * size * size;
                 NSArray *rgb = data[lutIndex];
 
-                rawData[index++] = [rgb[0] floatValue];
-                rawData[index++] = [rgb[1] floatValue];
-                rawData[index++] = [rgb[2] floatValue];
+                rawData[index++] = [rgb[0] floatValue];  // R
+                rawData[index++] = [rgb[1] floatValue];  // G
+                rawData[index++] = [rgb[2] floatValue];  // B
                 rawData[index++] = 1.0f; // Alpha
             }
         }
@@ -342,15 +380,19 @@
 
 - (id<MTLTexture>)createOutputTextureWithWidth:(NSUInteger)width height:(NSUInteger)height {
     MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
-    textureDescriptor.pixelFormat = MTLPixelFormatRGBA8Unorm;
+    // Use BGRA8Unorm which is the default format MTKTextureLoader uses
+    textureDescriptor.pixelFormat = MTLPixelFormatBGRA8Unorm;
     textureDescriptor.width = width;
     textureDescriptor.height = height;
     textureDescriptor.usage = MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead;
+    textureDescriptor.storageMode = MTLStorageModeShared;
 
     return [self.device newTextureWithDescriptor:textureDescriptor];
 }
 
 - (UIImage *)createImageFromTexture:(id<MTLTexture>)texture {
+    NSLog(@"[MetalLUTProcessor] 🖼️  Converting texture to UIImage...");
+
     NSUInteger width = texture.width;
     NSUInteger height = texture.height;
     NSUInteger bytesPerRow = width * 4;
@@ -362,17 +404,41 @@
            fromRegion:MTLRegionMake2D(0, 0, width, height)
           mipmapLevel:0];
 
+    // Log sample pixels from output texture
+    unsigned char *pixels = (unsigned char *)rawData;
+    NSLog(@"[MetalLUTProcessor]   Output texture sample (first pixel):");
+    NSLog(@"[MetalLUTProcessor]     Byte 0: %d, Byte 1: %d, Byte 2: %d, Byte 3: %d",
+          pixels[0], pixels[1], pixels[2], pixels[3]);
+
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+
+    // BGRA8Unorm texture data
+    // Use kCGImageAlphaPremultipliedFirst with kCGBitmapByteOrder32Little for BGRA
+    CGBitmapInfo bitmapInfo = kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little;
+
+    NSLog(@"[MetalLUTProcessor]   Creating CGContext with:");
+    NSLog(@"[MetalLUTProcessor]     Size: %lux%lu", (unsigned long)width, (unsigned long)height);
+    NSLog(@"[MetalLUTProcessor]     Bitmap info: 0x%x (PremultipliedFirst + LittleEndian)", bitmapInfo);
+
     CGContextRef context = CGBitmapContextCreate(rawData,
                                                  width,
                                                  height,
-                                                 8,
+                                                 8,  // bits per component
                                                  bytesPerRow,
                                                  colorSpace,
-                                                 kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+                                                 bitmapInfo);
+
+    if (!context) {
+        NSLog(@"[MetalLUTProcessor] ❌ ERROR: Failed to create CGContext");
+        CGColorSpaceRelease(colorSpace);
+        free(rawData);
+        return nil;
+    }
 
     CGImageRef cgImage = CGBitmapContextCreateImage(context);
     UIImage *image = [UIImage imageWithCGImage:cgImage];
+
+    NSLog(@"[MetalLUTProcessor] ✅ Successfully created UIImage from texture");
 
     CGImageRelease(cgImage);
     CGContextRelease(context);
@@ -434,11 +500,20 @@
         }
     }
 
-    // Verify we have the correct amount of data
+    // Verify we have at least the correct amount of data
+    // Some CUBE files may have extra entries, so we allow more data than expected
+    // but we'll only use the first expectedSize entries
     NSUInteger expectedSize = lutSize * lutSize * lutSize;
-    if (lutData.count != expectedSize) {
-        NSLog(@"LUT data size mismatch. Expected: %lu, Got: %lu", (unsigned long)expectedSize, (unsigned long)lutData.count);
+    if (lutData.count < expectedSize) {
+        NSLog(@"LUT data size insufficient. Expected at least: %lu, Got: %lu", (unsigned long)expectedSize, (unsigned long)lutData.count);
         return nil;
+    }
+
+    // If we have more data than expected, trim it to the expected size
+    if (lutData.count > expectedSize) {
+        NSLog(@"LUT data has extra entries. Expected: %lu, Got: %lu - using first %lu entries",
+              (unsigned long)expectedSize, (unsigned long)lutData.count, (unsigned long)expectedSize);
+        [lutData removeObjectsInRange:NSMakeRange(expectedSize, lutData.count - expectedSize)];
     }
 
     return @{

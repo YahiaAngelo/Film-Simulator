@@ -15,6 +15,7 @@
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
 		68020A0C8119ED27BABE30DB /* Pods_iosApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8FBDAD5FA0429E6E6050ED /* Pods_iosApp.framework */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
+		99E25CF91C732C9B06225A91 /* NativeProcessorBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAD502C5B6942CF587FBF8BC /* NativeProcessorBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 		7555FF8C242A565B00829871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7C8FBDAD5FA0429E6E6050ED /* Pods_iosApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iosApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAC6DA4966C203EF8E55EA4F /* Pods-iosApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.release.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.release.xcconfig"; sourceTree = "<group>"; };
+		DAD502C5B6942CF587FBF8BC /* NativeProcessorBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NativeProcessorBridge.swift; sourceTree = "<group>"; };
 		EFBCB1F3BC90B18D922FA611 /* Pods-iosApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.debug.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -92,6 +94,7 @@
 				00D12DD82E8FEBF6007047FD /* MetalLUTProcessor.h */,
 				00D12DD92E8FEBF6007047FD /* MetalLUTProcessor.m */,
 				00D12DDA2E8FEBF6007047FD /* MetalLUTProcessorWrapper.swift */,
+				DAD502C5B6942CF587FBF8BC /* NativeProcessorBridge.swift */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -115,6 +118,7 @@
 				7555FF77242A565900829871 /* Sources */,
 				7555FF79242A565900829871 /* Resources */,
 				5C38A09EF912860CDD16CE06 /* Frameworks */,
+				310F6A41F3008026A08AF78B /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -173,6 +177,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		310F6A41F3008026A08AF78B /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		EBC449CEF0D73F6722D89DD2 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -207,6 +228,7 @@
 				00D12DE02E8FEE06007047FD /* LUTProcessor.metal in Sources */,
 				2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */,
 				7555FF83242A565900829871 /* ContentView.swift in Sources */,
+				99E25CF91C732C9B06225A91 /* NativeProcessorBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

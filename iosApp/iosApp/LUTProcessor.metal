@@ -21,15 +21,23 @@ kernel void applyLUT3D(
         return;
     }
 
-    // Read input pixel
+    // Read input pixel from BGRA texture (premultiplied alpha)
+    // Metal interprets BGRA8Unorm as: B in component 0, G in 1, R in 2, A in 3
+    // But when we read it, the components are swizzled to RGBA order automatically
     float4 inputColor = inputTexture.read(gid);
+
+    // Unpremultiply alpha (iOS uses premultiplied alpha with alpha in first position)
+    float3 rgb = inputColor.rgb;
+    if (inputColor.a > 0.0) {
+        rgb = inputColor.rgb / inputColor.a;
+    }
 
     // LUT size is encoded in the texture dimensions
     float lutSize = float(lutTexture.get_width());
 
     // Calculate normalized coordinates for LUT sampling
     // The formula matches the Android trilinear interpolation
-    float3 coords = (inputColor.rgb * (lutSize - 1.0) + 0.5) / lutSize;
+    float3 coords = (rgb * (lutSize - 1.0) + 0.5) / lutSize;
 
     // Clamp coordinates to valid range [0, 1]
     coords = clamp(coords, 0.0, 1.0);
@@ -44,7 +52,10 @@ kernel void applyLUT3D(
     float4 lutColor = lutTexture.sample(lutSampler, coords);
 
     // Mix based on strength parameter (1.0 = full LUT, 0.0 = original)
-    float3 outputRGB = mix(inputColor.rgb, lutColor.rgb, lutStrength);
+    float3 outputRGB = mix(rgb, lutColor.rgb, lutStrength);
+
+    // Premultiply alpha again for output texture
+    outputRGB = outputRGB * inputColor.a;
 
     // Write output pixel, preserving original alpha
     outputTexture.write(float4(outputRGB, inputColor.a), gid);
@@ -79,11 +90,17 @@ kernel void applyLUT3DWithDownscale(
         (sourceCoord + 0.5) / float2(inputTexture.get_width(), inputTexture.get_height())
     );
 
+    // Unpremultiply alpha if needed
+    float3 rgb = inputColor.rgb;
+    if (inputColor.a > 0.0) {
+        rgb = inputColor.rgb / inputColor.a;
+    }
+
     // LUT size from texture dimensions
     float lutSize = float(lutTexture.get_width());
 
     // Calculate LUT coordinates
-    float3 coords = (inputColor.rgb * (lutSize - 1.0) + 0.5) / lutSize;
+    float3 coords = (rgb * (lutSize - 1.0) + 0.5) / lutSize;
     coords = clamp(coords, 0.0, 1.0);
 
     // Sample LUT with trilinear interpolation
@@ -95,7 +112,10 @@ kernel void applyLUT3DWithDownscale(
     float4 lutColor = lutTexture.sample(lutSampler, coords);
 
     // Apply LUT with strength
-    float3 outputRGB = mix(inputColor.rgb, lutColor.rgb, lutStrength);
+    float3 outputRGB = mix(rgb, lutColor.rgb, lutStrength);
+
+    // Premultiply alpha again for output
+    outputRGB = outputRGB * inputColor.a;
 
     // Write output
     outputTexture.write(float4(outputRGB, inputColor.a), gid);

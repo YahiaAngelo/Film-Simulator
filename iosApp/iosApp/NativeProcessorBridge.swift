@@ -3,13 +3,15 @@
 //  Film Simulator
 //
 //  Swift bridge that actually calls Metal processor
-//  This will be called from the iOS app layer
+//  This will be called from the shared framework via Objective-C runtime
 //
 
 import Foundation
 import UIKit
 import shared
 
+// IMPORTANT: This class will be discoverable via NSClassFromString
+// The runtime name will be "iosApp.NativeProcessorBridge" automatically
 @objc public class NativeProcessorBridge: NSObject {
 
     @objc public static let shared = NativeProcessorBridge()
@@ -18,18 +20,22 @@ import shared
 
     private override init() {
         super.init()
-        NSLog("[NativeProcessorBridge] Swift bridge initialized")
+        NSLog("[NativeProcessorBridge.swift] ✓ Swift bridge initialized and ready")
     }
 
-    /// Intercept and process image with Metal before falling back to shared code
-    @objc public func processImageIfNeeded(
-        inputPath: String,
+    /// Process image with Metal (called dynamically from shared framework)
+    /// Method signature MUST match the Objective-C header exactly
+    @objc public func processImageIfNeededWithInputPath(
+        _ inputPath: String,
         outputPath: String,
         lutPath: String,
         createThumbnail: Bool
     ) -> Bool {
-        NSLog("[NativeProcessorBridge] Intercepting image processing request")
-        NSLog("[NativeProcessorBridge] Attempting to use Metal processor...")
+        NSLog("[NativeProcessorBridge.swift] ✓✓✓ Swift implementation called via runtime! ✓✓✓")
+        NSLog("[NativeProcessorBridge.swift] Processing image with Metal...")
+        NSLog("[NativeProcessorBridge.swift]   Input: \(inputPath)")
+        NSLog("[NativeProcessorBridge.swift]   Output: \(outputPath)")
+        NSLog("[NativeProcessorBridge.swift]   LUT: \(lutPath)")
 
         let result = metalProcessor.applyLUT(
             inputPath: inputPath,
@@ -39,16 +45,18 @@ import shared
         )
 
         if result {
-            NSLog("[NativeProcessorBridge] ✓✓✓ Successfully processed with Metal! ✓✓✓")
+            NSLog("[NativeProcessorBridge.swift] ✓✓✓ Metal processing SUCCEEDED! ✓✓✓")
         } else {
-            NSLog("[NativeProcessorBridge] ✗ Metal processing failed, will fall back to Core Image")
+            NSLog("[NativeProcessorBridge.swift] ✗ Metal processing failed")
         }
 
         return result
     }
 
     @objc public func isMetalAvailable() -> Bool {
-        return MetalLUTProcessorWrapper.isMetalAvailable()
+        let available = MetalLUTProcessorWrapper.isMetalAvailable()
+        NSLog("[NativeProcessorBridge.swift] Metal available: \(available)")
+        return available
     }
 }
 
@@ -64,8 +72,8 @@ public func nativeProcessImage(
     let outputPath = String(cString: outputPathPtr)
     let lutPath = String(cString: lutPathPtr)
 
-    return NativeProcessorBridge.shared.processImageIfNeeded(
-        inputPath: inputPath,
+    return NativeProcessorBridge.shared.processImageIfNeededWithInputPath(
+        inputPath,
         outputPath: outputPath,
         lutPath: lutPath,
         createThumbnail: createThumbnail
