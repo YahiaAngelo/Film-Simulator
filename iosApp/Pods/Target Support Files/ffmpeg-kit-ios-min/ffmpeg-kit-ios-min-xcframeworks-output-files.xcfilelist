@@ -1,8 +1,0 @@
-${PODS_XCFRAMEWORKS_BUILD_DIR}/ffmpeg-kit-ios-min/ffmpegkit.framework
-${PODS_XCFRAMEWORKS_BUILD_DIR}/ffmpeg-kit-ios-min/libavcodec.framework
-${PODS_XCFRAMEWORKS_BUILD_DIR}/ffmpeg-kit-ios-min/libavdevice.framework
-${PODS_XCFRAMEWORKS_BUILD_DIR}/ffmpeg-kit-ios-min/libavfilter.framework
-${PODS_XCFRAMEWORKS_BUILD_DIR}/ffmpeg-kit-ios-min/libavformat.framework
-${PODS_XCFRAMEWORKS_BUILD_DIR}/ffmpeg-kit-ios-min/libavutil.framework
-${PODS_XCFRAMEWORKS_BUILD_DIR}/ffmpeg-kit-ios-min/libswresample.framework
-${PODS_XCFRAMEWORKS_BUILD_DIR}/ffmpeg-kit-ios-min/libswscale.framework

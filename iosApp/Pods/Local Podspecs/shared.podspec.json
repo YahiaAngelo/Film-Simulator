@@ -13,11 +13,6 @@
   "platforms": {
     "ios": "16.0"
   },
-  "dependencies": {
-    "ffmpeg-kit-ios-min": [
-      "6.0"
-    ]
-  },
   "xcconfig": {
     "ENABLE_USER_SCRIPT_SANDBOXING": "NO"
   },
