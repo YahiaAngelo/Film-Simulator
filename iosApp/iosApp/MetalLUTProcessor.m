@@ -9,6 +9,8 @@
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
 #import <CoreGraphics/CoreGraphics.h>
+#import <ImageIO/ImageIO.h>
+#import <MobileCoreServices/MobileCoreServices.h>
 
 @interface MetalLUTProcessor ()
 @property (nonatomic, strong) id<MTLDevice> device;
@@ -29,88 +31,44 @@
 }
 
 - (void)setupMetal {
-    NSLog(@"[MetalLUTProcessor] Starting Metal setup...");
-
     self.device = MTLCreateSystemDefaultDevice();
     if (!self.device) {
-        NSLog(@"[MetalLUTProcessor] ERROR: Metal device not available - Metal is not supported on this device");
         return;
     }
-    NSLog(@"[MetalLUTProcessor] Metal device created successfully: %@", self.device.name);
 
     self.commandQueue = [self.device newCommandQueue];
-    NSLog(@"[MetalLUTProcessor] Command queue created");
 
     // Load the Metal library
     NSError *error = nil;
 
     // Try to load from default library first
-    NSLog(@"[MetalLUTProcessor] Attempting to load from default library...");
     self.library = [self.device newDefaultLibrary];
 
-    if (self.library) {
-        NSLog(@"[MetalLUTProcessor] Successfully loaded Metal library from default.metallib");
-    } else {
-        NSLog(@"[MetalLUTProcessor] Default library not found, trying to compile from source...");
-
+    if (!self.library) {
         // Try to compile from source
         NSString *metalPath = [[NSBundle mainBundle] pathForResource:@"LUTProcessor" ofType:@"metal"];
         if (metalPath) {
-            NSLog(@"[MetalLUTProcessor] Found LUTProcessor.metal at: %@", metalPath);
             NSString *source = [NSString stringWithContentsOfFile:metalPath encoding:NSUTF8StringEncoding error:&error];
             if (source) {
-                NSLog(@"[MetalLUTProcessor] Compiling Metal shader from source...");
                 self.library = [self.device newLibraryWithSource:source options:nil error:&error];
-                if (error) {
-                    NSLog(@"[MetalLUTProcessor] ERROR: Metal compilation failed: %@", error.localizedDescription);
-                } else if (self.library) {
-                    NSLog(@"[MetalLUTProcessor] Successfully compiled Metal shader from source");
-                }
-            } else {
-                NSLog(@"[MetalLUTProcessor] ERROR: Failed to read Metal source file: %@", error ? error.localizedDescription : @"Unknown error");
             }
-        } else {
-            NSLog(@"[MetalLUTProcessor] ERROR: LUTProcessor.metal not found in bundle");
         }
     }
 
     if (!self.library) {
-        NSLog(@"[MetalLUTProcessor] ERROR: Failed to load Metal library from any source - Metal processing will not be available");
         return;
     }
-
-    // List all functions in the library for debugging
-    NSArray<NSString *> *functionNames = [self.library functionNames];
-    NSLog(@"[MetalLUTProcessor] Available functions in Metal library: %@", functionNames);
 
     // Create compute pipeline states
     id<MTLFunction> applyLUT3DFunction = [self.library newFunctionWithName:@"applyLUT3D"];
     if (applyLUT3DFunction) {
-        NSLog(@"[MetalLUTProcessor] Found 'applyLUT3D' function");
         self.computePipelineState = [self.device newComputePipelineStateWithFunction:applyLUT3DFunction error:&error];
-        if (error) {
-            NSLog(@"[MetalLUTProcessor] ERROR: Failed to create applyLUT3D pipeline: %@", error.localizedDescription);
-        } else {
-            NSLog(@"[MetalLUTProcessor] Successfully created applyLUT3D pipeline state");
-        }
-    } else {
-        NSLog(@"[MetalLUTProcessor] ERROR: 'applyLUT3D' function not found in Metal library");
     }
 
     id<MTLFunction> applyLUT3DDownscaleFunction = [self.library newFunctionWithName:@"applyLUT3DWithDownscale"];
     if (applyLUT3DDownscaleFunction) {
-        NSLog(@"[MetalLUTProcessor] Found 'applyLUT3DWithDownscale' function");
         self.computePipelineStateDownscale = [self.device newComputePipelineStateWithFunction:applyLUT3DDownscaleFunction error:&error];
-        if (error) {
-            NSLog(@"[MetalLUTProcessor] ERROR: Failed to create applyLUT3DWithDownscale pipeline: %@", error.localizedDescription);
-        } else {
-            NSLog(@"[MetalLUTProcessor] Successfully created applyLUT3DWithDownscale pipeline state");
-        }
-    } else {
-        NSLog(@"[MetalLUTProcessor] ERROR: 'applyLUT3DWithDownscale' function not found in Metal library");
     }
-
-    NSLog(@"[MetalLUTProcessor] Metal setup completed. Ready: %@", (self.computePipelineState != nil) ? @"YES" : @"NO");
 }
 
 - (BOOL)applyLUTWithInputPath:(NSString *)inputPath
@@ -118,48 +76,25 @@
                       lutPath:(NSString *)lutPath
               createThumbnail:(BOOL)createThumbnail {
 
-    NSLog(@"[MetalLUTProcessor] Starting LUT application - Thumbnail: %@", createThumbnail ? @"YES" : @"NO");
-    NSLog(@"[MetalLUTProcessor] Input: %@", inputPath);
-    NSLog(@"[MetalLUTProcessor] Output: %@", outputPath);
-    NSLog(@"[MetalLUTProcessor] LUT: %@", lutPath);
-
     // Parse the LUT file
-    NSLog(@"[MetalLUTProcessor] Parsing CUBE file...");
     NSDictionary *lutData = [self parseCubeFile:lutPath];
     if (!lutData) {
-        NSLog(@"[MetalLUTProcessor] ERROR: Failed to parse CUBE file");
         return NO;
     }
-    NSLog(@"[MetalLUTProcessor] Successfully parsed CUBE file with size: %@", lutData[@"size"]);
 
-    // Load input image
-    NSLog(@"[MetalLUTProcessor] Loading input image...");
     UIImage *inputImage = [UIImage imageWithContentsOfFile:inputPath];
     if (!inputImage) {
-        NSLog(@"[MetalLUTProcessor] ERROR: Failed to load input image");
         return NO;
     }
-    NSLog(@"[MetalLUTProcessor] Input image loaded: %.0fx%.0f", inputImage.size.width, inputImage.size.height);
 
-    // Process image using Metal
-    NSLog(@"[MetalLUTProcessor] Processing image with Metal...");
     UIImage *outputImage = [self processImage:inputImage
                                        lutData:lutData
                               createThumbnail:createThumbnail];
     if (!outputImage) {
-        NSLog(@"[MetalLUTProcessor] ERROR: Failed to process image with Metal");
         return NO;
     }
-    NSLog(@"[MetalLUTProcessor] Image processing successful: %.0fx%.0f", outputImage.size.width, outputImage.size.height);
 
-    // Save output image
-    NSLog(@"[MetalLUTProcessor] Saving output image...");
     BOOL saved = [self saveImage:outputImage toPath:outputPath];
-    if (saved) {
-        NSLog(@"[MetalLUTProcessor] Successfully saved output image");
-    } else {
-        NSLog(@"[MetalLUTProcessor] ERROR: Failed to save output image");
-    }
 
     return saved;
 }
@@ -214,6 +149,8 @@
     [computeEncoder setTexture:outputTexture atIndex:1];
     [computeEncoder setTexture:lutTexture atIndex:2];
 
+    float lutStrength = 1.0f;
+
     if (createThumbnail) {
         // Set scale factor for downscaling
         float scaleFactorData[2] = {
@@ -221,12 +158,9 @@
             inputImage.size.height / outputHeight
         };
         [computeEncoder setBytes:scaleFactorData length:sizeof(scaleFactorData) atIndex:0];
-
-        float lutStrength = 1.0f;
         [computeEncoder setBytes:&lutStrength length:sizeof(lutStrength) atIndex:1];
     } else {
-        // Just set LUT strength for regular processing
-        float lutStrength = 1.0f;
+        // Set LUT strength for regular processing
         [computeEncoder setBytes:&lutStrength length:sizeof(lutStrength) atIndex:0];
     }
 
@@ -248,72 +182,71 @@
 }
 
 - (id<MTLTexture>)createTextureFromImage:(UIImage *)image {
-    NSLog(@"[MetalLUTProcessor] 📸 Creating texture from UIImage...");
-    NSLog(@"[MetalLUTProcessor]   Input image size: %.0fx%.0f", image.size.width, image.size.height);
-
     CGImageRef cgImage = image.CGImage;
-    if (cgImage) {
-        NSLog(@"[MetalLUTProcessor]   CGImage info:");
-        NSLog(@"[MetalLUTProcessor]     - Size: %zux%zu", CGImageGetWidth(cgImage), CGImageGetHeight(cgImage));
-        NSLog(@"[MetalLUTProcessor]     - Bits per pixel: %zu", CGImageGetBitsPerPixel(cgImage));
-        NSLog(@"[MetalLUTProcessor]     - Bits per component: %zu", CGImageGetBitsPerComponent(cgImage));
-        NSLog(@"[MetalLUTProcessor]     - Bytes per row: %zu", CGImageGetBytesPerRow(cgImage));
-
-        CGBitmapInfo bitmapInfo = CGImageGetBitmapInfo(cgImage);
-        CGImageAlphaInfo alphaInfo = bitmapInfo & kCGBitmapAlphaInfoMask;
-        NSLog(@"[MetalLUTProcessor]     - Alpha info: %u", alphaInfo);
-        NSLog(@"[MetalLUTProcessor]     - Byte order: %s",
-              (bitmapInfo & kCGBitmapByteOrderMask) == kCGBitmapByteOrder32Little ? "Little (BGRA)" :
-              (bitmapInfo & kCGBitmapByteOrderMask) == kCGBitmapByteOrder32Big ? "Big (RGBA)" : "Unknown");
-    }
-
-    // Use MTKTextureLoader which handles all pixel format conversions correctly
-    MTKTextureLoader *textureLoader = [[MTKTextureLoader alloc] initWithDevice:self.device];
-
-    NSDictionary *options = @{
-        MTKTextureLoaderOptionSRGB: @NO,  // Don't apply sRGB conversion
-        MTKTextureLoaderOptionTextureUsage: @(MTLTextureUsageShaderRead),
-        MTKTextureLoaderOptionTextureStorageMode: @(MTLStorageModeShared)
-    };
-
-    NSError *error = nil;
-    id<MTLTexture> texture = [textureLoader newTextureWithCGImage:cgImage
-                                                          options:options
-                                                            error:&error];
-
-    if (error) {
-        NSLog(@"[MetalLUTProcessor] ❌ ERROR: Failed to create texture from image: %@", error.localizedDescription);
+    if (!cgImage) {
         return nil;
     }
 
-    if (texture) {
-        NSString *formatName;
-        switch (texture.pixelFormat) {
-            case MTLPixelFormatBGRA8Unorm: formatName = @"BGRA8Unorm"; break;
-            case MTLPixelFormatRGBA8Unorm: formatName = @"RGBA8Unorm"; break;
-            case MTLPixelFormatBGRA8Unorm_sRGB: formatName = @"BGRA8Unorm_sRGB"; break;
-            case MTLPixelFormatRGBA8Unorm_sRGB: formatName = @"RGBA8Unorm_sRGB"; break;
-            default: formatName = [NSString stringWithFormat:@"Unknown (%lu)", (unsigned long)texture.pixelFormat]; break;
-        }
-        NSLog(@"[MetalLUTProcessor] ✅ Created texture:");
-        NSLog(@"[MetalLUTProcessor]   Format: %@ (%lu)", formatName, (unsigned long)texture.pixelFormat);
-        NSLog(@"[MetalLUTProcessor]   Size: %lux%lu", (unsigned long)texture.width, (unsigned long)texture.height);
+    NSUInteger width = CGImageGetWidth(cgImage);
+    NSUInteger height = CGImageGetHeight(cgImage);
 
-        // Read first few pixels to verify colors
-        NSUInteger bytesPerRow = texture.width * 4;
-        void *testData = malloc(bytesPerRow * 4); // First 4 rows
-        [texture getBytes:testData
-              bytesPerRow:bytesPerRow
-               fromRegion:MTLRegionMake2D(0, 0, texture.width, 4)
-              mipmapLevel:0];
+    MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
+    textureDescriptor.pixelFormat = MTLPixelFormatRGBA8Unorm;
+    textureDescriptor.width = width;
+    textureDescriptor.height = height;
+    textureDescriptor.usage = MTLTextureUsageShaderRead;
+    textureDescriptor.storageMode = MTLStorageModeShared;
 
-        unsigned char *pixels = (unsigned char *)testData;
-        NSLog(@"[MetalLUTProcessor]   Sample pixels (first pixel):");
-        NSLog(@"[MetalLUTProcessor]     Byte 0: %d, Byte 1: %d, Byte 2: %d, Byte 3: %d",
-              pixels[0], pixels[1], pixels[2], pixels[3]);
+    id<MTLTexture> texture = [self.device newTextureWithDescriptor:textureDescriptor];
 
-        free(testData);
+    NSUInteger bytesPerRow = width * 4;
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    void *rawData = malloc(height * bytesPerRow);
+
+    CGBitmapInfo inputByteOrder = CGImageGetBitmapInfo(cgImage) & kCGBitmapByteOrderMask;
+    CGBitmapInfo bitmapInfo;
+    if (inputByteOrder == 0 || inputByteOrder == kCGBitmapByteOrder32Little) {
+        bitmapInfo = kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little;
+    } else {
+        bitmapInfo = kCGImageAlphaNoneSkipLast | kCGBitmapByteOrder32Big;
     }
+
+    CGContextRef context = CGBitmapContextCreate(rawData,
+                                                 width,
+                                                 height,
+                                                 8,
+                                                 bytesPerRow,
+                                                 colorSpace,
+                                                 bitmapInfo);
+
+    if (!context) {
+        CGColorSpaceRelease(colorSpace);
+        free(rawData);
+        return nil;
+    }
+
+    CGContextDrawImage(context, CGRectMake(0, 0, width, height), cgImage);
+
+    // If we loaded as BGRA, convert to RGBA for Metal
+    if (inputByteOrder == 0 || inputByteOrder == kCGBitmapByteOrder32Little) {
+        unsigned char *pixels = (unsigned char *)rawData;
+        for (NSUInteger i = 0; i < width * height; i++) {
+            NSUInteger offset = i * 4;
+            unsigned char b = pixels[offset + 0];
+            unsigned char r = pixels[offset + 2];
+            pixels[offset + 0] = r;
+            pixels[offset + 2] = b;
+        }
+    }
+
+    [texture replaceRegion:MTLRegionMake2D(0, 0, width, height)
+               mipmapLevel:0
+                 withBytes:rawData
+               bytesPerRow:bytesPerRow];
+
+    CGContextRelease(context);
+    CGColorSpaceRelease(colorSpace);
+    free(rawData);
 
     return texture;
 }
@@ -341,27 +274,17 @@
     NSUInteger dataSize = size * size * size * 4 * sizeof(float);
     float *rawData = malloc(dataSize);
 
-    // Fill 3D texture in the order that Metal expects for sampling
-    // Metal's 3D texture coordinates are (R, G, B) when sampling
-    // The data must be laid out so that when we sample with coords (r, g, b),
-    // we get the correct LUT value.
-    //
-    // Metal 3D textures are laid out with the first dimension (width/R) changing fastest,
-    // then second (height/G), then third (depth/B).
-    // This matches our LUT data which is indexed as: r + g * size + b * size * size
-
     NSUInteger index = 0;
-    for (NSUInteger b = 0; b < size; b++) {        // Depth (blue)
-        for (NSUInteger g = 0; g < size; g++) {    // Height (green)
-            for (NSUInteger r = 0; r < size; r++) {    // Width (red) - fastest changing
-                // LUT data is stored in R-major order: r + g * size + b * size * size
+    for (NSUInteger b = 0; b < size; b++) {
+        for (NSUInteger g = 0; g < size; g++) {
+            for (NSUInteger r = 0; r < size; r++) {
                 NSUInteger lutIndex = r + g * size + b * size * size;
                 NSArray *rgb = data[lutIndex];
 
-                rawData[index++] = [rgb[0] floatValue];  // R
-                rawData[index++] = [rgb[1] floatValue];  // G
-                rawData[index++] = [rgb[2] floatValue];  // B
-                rawData[index++] = 1.0f; // Alpha
+                rawData[index++] = [rgb[0] floatValue];
+                rawData[index++] = [rgb[1] floatValue];
+                rawData[index++] = [rgb[2] floatValue];
+                rawData[index++] = 1.0f;
             }
         }
     }
@@ -380,8 +303,8 @@
 
 - (id<MTLTexture>)createOutputTextureWithWidth:(NSUInteger)width height:(NSUInteger)height {
     MTLTextureDescriptor *textureDescriptor = [[MTLTextureDescriptor alloc] init];
-    // Use BGRA8Unorm which is the default format MTKTextureLoader uses
-    textureDescriptor.pixelFormat = MTLPixelFormatBGRA8Unorm;
+    // Use RGBA8Unorm to match input format
+    textureDescriptor.pixelFormat = MTLPixelFormatRGBA8Unorm;
     textureDescriptor.width = width;
     textureDescriptor.height = height;
     textureDescriptor.usage = MTLTextureUsageShaderWrite | MTLTextureUsageShaderRead;
@@ -391,8 +314,6 @@
 }
 
 - (UIImage *)createImageFromTexture:(id<MTLTexture>)texture {
-    NSLog(@"[MetalLUTProcessor] 🖼️  Converting texture to UIImage...");
-
     NSUInteger width = texture.width;
     NSUInteger height = texture.height;
     NSUInteger bytesPerRow = width * 4;
@@ -404,32 +325,20 @@
            fromRegion:MTLRegionMake2D(0, 0, width, height)
           mipmapLevel:0];
 
-    // Log sample pixels from output texture
-    unsigned char *pixels = (unsigned char *)rawData;
-    NSLog(@"[MetalLUTProcessor]   Output texture sample (first pixel):");
-    NSLog(@"[MetalLUTProcessor]     Byte 0: %d, Byte 1: %d, Byte 2: %d, Byte 3: %d",
-          pixels[0], pixels[1], pixels[2], pixels[3]);
+    // Use sRGB color space
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
 
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-
-    // BGRA8Unorm texture data
-    // Use kCGImageAlphaPremultipliedFirst with kCGBitmapByteOrder32Little for BGRA
-    CGBitmapInfo bitmapInfo = kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little;
-
-    NSLog(@"[MetalLUTProcessor]   Creating CGContext with:");
-    NSLog(@"[MetalLUTProcessor]     Size: %lux%lu", (unsigned long)width, (unsigned long)height);
-    NSLog(@"[MetalLUTProcessor]     Bitmap info: 0x%x (PremultipliedFirst + LittleEndian)", bitmapInfo);
+    CGBitmapInfo bitmapInfo = kCGImageAlphaNoneSkipLast | kCGBitmapByteOrderDefault;
 
     CGContextRef context = CGBitmapContextCreate(rawData,
                                                  width,
                                                  height,
-                                                 8,  // bits per component
+                                                 8,
                                                  bytesPerRow,
                                                  colorSpace,
                                                  bitmapInfo);
 
     if (!context) {
-        NSLog(@"[MetalLUTProcessor] ❌ ERROR: Failed to create CGContext");
         CGColorSpaceRelease(colorSpace);
         free(rawData);
         return nil;
@@ -437,8 +346,6 @@
 
     CGImageRef cgImage = CGBitmapContextCreateImage(context);
     UIImage *image = [UIImage imageWithCGImage:cgImage];
-
-    NSLog(@"[MetalLUTProcessor] ✅ Successfully created UIImage from texture");
 
     CGImageRelease(cgImage);
     CGContextRelease(context);
@@ -468,19 +375,25 @@
             continue;
         }
 
+        // Skip DOMAIN and TITLE lines FIRST before any other parsing
+        if ([trimmedLine hasPrefix:@"DOMAIN_MIN"] ||
+            [trimmedLine hasPrefix:@"DOMAIN_MAX"] ||
+            [trimmedLine hasPrefix:@"TITLE"]) {
+            continue;
+        }
+
         // Parse LUT size
         if ([trimmedLine hasPrefix:@"LUT_3D_SIZE"]) {
             NSArray *components = [trimmedLine componentsSeparatedByString:@" "];
             if (components.count > 1) {
                 lutSize = [components.lastObject integerValue];
                 if (lutSize <= 0 || lutSize > 256) {
-                    NSLog(@"Invalid LUT size: %lu", (unsigned long)lutSize);
                     return nil;
                 }
             }
         }
-        // Parse RGB values
-        else if (lutSize > 0 && ![trimmedLine containsString:@"="]) {
+        // Parse RGB values - only if we have found the LUT size and the line contains decimal points (likely float values)
+        else if (lutSize > 0 && [trimmedLine rangeOfString:@"."].location != NSNotFound) {
             NSArray *components = [trimmedLine componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
             NSMutableArray *cleanComponents = [NSMutableArray array];
 
@@ -491,11 +404,19 @@
             }
 
             if (cleanComponents.count >= 3) {
-                CGFloat r = [cleanComponents[0] floatValue];
-                CGFloat g = [cleanComponents[1] floatValue];
-                CGFloat b = [cleanComponents[2] floatValue];
+                // Try to parse the values
+                NSScanner *scanner = [NSScanner scannerWithString:cleanComponents[0]];
+                float r, g, b;
 
-                [lutData addObject:@[@(r), @(g), @(b)]];
+                BOOL validR = [scanner scanFloat:&r];
+                scanner = [NSScanner scannerWithString:cleanComponents[1]];
+                BOOL validG = [scanner scanFloat:&g];
+                scanner = [NSScanner scannerWithString:cleanComponents[2]];
+                BOOL validB = [scanner scanFloat:&b];
+
+                if (validR && validG && validB) {
+                    [lutData addObject:@[@(r), @(g), @(b)]];
+                }
             }
         }
     }
@@ -505,14 +426,11 @@
     // but we'll only use the first expectedSize entries
     NSUInteger expectedSize = lutSize * lutSize * lutSize;
     if (lutData.count < expectedSize) {
-        NSLog(@"LUT data size insufficient. Expected at least: %lu, Got: %lu", (unsigned long)expectedSize, (unsigned long)lutData.count);
         return nil;
     }
 
     // If we have more data than expected, trim it to the expected size
     if (lutData.count > expectedSize) {
-        NSLog(@"LUT data has extra entries. Expected: %lu, Got: %lu - using first %lu entries",
-              (unsigned long)expectedSize, (unsigned long)lutData.count, (unsigned long)expectedSize);
         [lutData removeObjectsInRange:NSMakeRange(expectedSize, lutData.count - expectedSize)];
     }
 
@@ -523,15 +441,56 @@
 }
 
 - (BOOL)saveImage:(UIImage *)image toPath:(NSString *)path {
-    NSData *imageData;
+    // Use CGImageDestination for better format control
+    NSURL *fileURL = [NSURL fileURLWithPath:path];
 
+    // Determine image type from extension
+    CFStringRef imageType;
     if ([path hasSuffix:@".jpg"] || [path hasSuffix:@".jpeg"]) {
-        imageData = UIImageJPEGRepresentation(image, 0.9);
+        imageType = kUTTypeJPEG;
+    } else if ([path hasSuffix:@".png"]) {
+        imageType = kUTTypePNG;
     } else {
-        imageData = UIImagePNGRepresentation(image);
+        imageType = kUTTypeJPEG; // Default to JPEG
     }
 
-    return [imageData writeToFile:path atomically:YES];
+    // Create image destination
+    CGImageDestinationRef destination = CGImageDestinationCreateWithURL(
+        (__bridge CFURLRef)fileURL,
+        imageType,
+        1,
+        NULL
+    );
+
+    if (!destination) {
+        return NO;
+    }
+
+    // Get the CGImage
+    CGImageRef cgImage = image.CGImage;
+
+    // Create properties dictionary with explicit color profile
+    NSMutableDictionary *properties = [NSMutableDictionary dictionary];
+
+    if (imageType == kUTTypeJPEG) {
+        // JPEG quality
+        properties[(NSString *)kCGImageDestinationLossyCompressionQuality] = @0.95;
+    }
+
+    // Explicitly set sRGB color profile
+    CGColorSpaceRef srgbColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    properties[(NSString *)kCGImagePropertyColorModel] = (NSString *)kCGImagePropertyColorModelRGB;
+
+    // Add the image with properties
+    CGImageDestinationAddImage(destination, cgImage, (__bridge CFDictionaryRef)properties);
+
+    // Finalize the image file
+    BOOL success = CGImageDestinationFinalize(destination);
+
+    CFRelease(destination);
+    CGColorSpaceRelease(srgbColorSpace);
+
+    return success;
 }
 
 @end

@@ -1,5 +1,6 @@
 #!/bin/bash
-# Build static library from Objective-C stub
+# Build XCFramework from Objective-C stub
+# Creates separate frameworks for device and simulator
 
 set -e
 
@@ -13,17 +14,56 @@ echo "Building NativeProcessorBridge stub library..."
 echo "Script dir: $SCRIPT_DIR"
 echo "iOS app dir: $IOS_APP_DIR"
 
-# Compile for simulator
+# Compile for arm64 device
+echo "Building for arm64 (device)..."
 clang -c \
-  -target arm64-apple-ios-simulator \
-  -isysroot "$(xcrun --sdk iphonesimulator --show-sdk-path)" \
-  -mios-simulator-version-min=16.0 \
+  -target arm64-apple-ios16.0 \
+  -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" \
   -I"$IOS_APP_DIR" \
   -fobjc-arc \
   "$SCRIPT_DIR/NativeProcessorBridge.m" \
-  -o "$BUILD_DIR/NativeProcessorBridge_sim.o"
+  -o "$BUILD_DIR/NativeProcessorBridge_arm64.o"
 
-# Create static library
-ar rcs "$BUILD_DIR/libNativeProcessorBridge.a" "$BUILD_DIR/NativeProcessorBridge_sim.o"
+# Create device library
+echo "Creating device library..."
+ar rcs "$BUILD_DIR/libNativeProcessorBridge_arm64.a" \
+  "$BUILD_DIR/NativeProcessorBridge_arm64.o"
 
-echo "✅ Static library built: $BUILD_DIR/libNativeProcessorBridge.a"
+# Compile for arm64 simulator
+echo "Building for arm64 (simulator)..."
+clang -c \
+  -target arm64-apple-ios16.0-simulator \
+  -isysroot "$(xcrun --sdk iphonesimulator --show-sdk-path)" \
+  -I"$IOS_APP_DIR" \
+  -fobjc-arc \
+  "$SCRIPT_DIR/NativeProcessorBridge.m" \
+  -o "$BUILD_DIR/NativeProcessorBridge_sim_arm64.o"
+
+# Compile for x86_64 simulator
+echo "Building for x86_64 (simulator)..."
+clang -c \
+  -target x86_64-apple-ios16.0-simulator \
+  -isysroot "$(xcrun --sdk iphonesimulator --show-sdk-path)" \
+  -I"$IOS_APP_DIR" \
+  -fobjc-arc \
+  "$SCRIPT_DIR/NativeProcessorBridge.m" \
+  -o "$BUILD_DIR/NativeProcessorBridge_x86_64.o"
+
+# Create simulator fat library
+echo "Creating simulator fat library..."
+ar rcs "$BUILD_DIR/libNativeProcessorBridge_sim_arm64.a" "$BUILD_DIR/NativeProcessorBridge_sim_arm64.o"
+ar rcs "$BUILD_DIR/libNativeProcessorBridge_x86_64.a" "$BUILD_DIR/NativeProcessorBridge_x86_64.o"
+
+lipo -create \
+  "$BUILD_DIR/libNativeProcessorBridge_sim_arm64.a" \
+  "$BUILD_DIR/libNativeProcessorBridge_x86_64.a" \
+  -output "$BUILD_DIR/libNativeProcessorBridge_simulator.a"
+
+# For Kotlin/Native cinterop, we'll use the device library as default
+# Xcode will handle selecting the right architecture
+cp "$BUILD_DIR/libNativeProcessorBridge_arm64.a" "$BUILD_DIR/libNativeProcessorBridge.a"
+
+echo "✅ Static libraries built:"
+echo "   - Device (arm64): $BUILD_DIR/libNativeProcessorBridge_arm64.a"
+echo "   - Simulator (universal): $BUILD_DIR/libNativeProcessorBridge_simulator.a"
+echo "   - Default (for cinterop): $BUILD_DIR/libNativeProcessorBridge.a"

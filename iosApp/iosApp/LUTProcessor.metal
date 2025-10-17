@@ -21,12 +21,11 @@ kernel void applyLUT3D(
         return;
     }
 
-    // Read input pixel from BGRA texture (premultiplied alpha)
-    // Metal interprets BGRA8Unorm as: B in component 0, G in 1, R in 2, A in 3
-    // But when we read it, the components are swizzled to RGBA order automatically
+    // Read input pixel from RGBA texture
+    // Texture is RGBA8Unorm, so .rgb gives us the correct RGB values directly
     float4 inputColor = inputTexture.read(gid);
 
-    // Unpremultiply alpha (iOS uses premultiplied alpha with alpha in first position)
+    // Unpremultiply alpha if needed (input uses premultiplied alpha format)
     float3 rgb = inputColor.rgb;
     if (inputColor.a > 0.0) {
         rgb = inputColor.rgb / inputColor.a;
@@ -36,8 +35,10 @@ kernel void applyLUT3D(
     float lutSize = float(lutTexture.get_width());
 
     // Calculate normalized coordinates for LUT sampling
-    // The formula matches the Android trilinear interpolation
-    float3 coords = (rgb * (lutSize - 1.0) + 0.5) / lutSize;
+    // For proper texel center sampling in a 3D LUT:
+    // We need to map [0,1] input range to texel centers at [0.5/N, (N-0.5)/N]
+    // This prevents edge sampling issues that cause problems with dark values
+    float3 coords = rgb * ((lutSize - 1.0) / lutSize) + (0.5 / lutSize);
 
     // Clamp coordinates to valid range [0, 1]
     coords = clamp(coords, 0.0, 1.0);
@@ -54,11 +55,11 @@ kernel void applyLUT3D(
     // Mix based on strength parameter (1.0 = full LUT, 0.0 = original)
     float3 outputRGB = mix(rgb, lutColor.rgb, lutStrength);
 
-    // Premultiply alpha again for output texture
-    outputRGB = outputRGB * inputColor.a;
+    // Don't premultiply for output since we're saving to JPEG (no alpha channel)
+    // The output CGContext uses NoneSkipLast format which expects non-premultiplied RGB
 
-    // Write output pixel, preserving original alpha
-    outputTexture.write(float4(outputRGB, inputColor.a), gid);
+    // Write output pixel to RGBA texture
+    outputTexture.write(float4(outputRGB, 1.0), gid);
 }
 
 // Optimized kernel for thumbnail generation with simultaneous downscaling
@@ -90,7 +91,7 @@ kernel void applyLUT3DWithDownscale(
         (sourceCoord + 0.5) / float2(inputTexture.get_width(), inputTexture.get_height())
     );
 
-    // Unpremultiply alpha if needed
+    // Unpremultiply alpha if needed (input uses premultiplied alpha format)
     float3 rgb = inputColor.rgb;
     if (inputColor.a > 0.0) {
         rgb = inputColor.rgb / inputColor.a;
@@ -99,8 +100,9 @@ kernel void applyLUT3DWithDownscale(
     // LUT size from texture dimensions
     float lutSize = float(lutTexture.get_width());
 
-    // Calculate LUT coordinates
-    float3 coords = (rgb * (lutSize - 1.0) + 0.5) / lutSize;
+    // Calculate LUT coordinates with proper texel center mapping
+    // Map [0,1] input range to texel centers at [0.5/N, (N-0.5)/N]
+    float3 coords = rgb * ((lutSize - 1.0) / lutSize) + (0.5 / lutSize);
     coords = clamp(coords, 0.0, 1.0);
 
     // Sample LUT with trilinear interpolation
@@ -114,11 +116,11 @@ kernel void applyLUT3DWithDownscale(
     // Apply LUT with strength
     float3 outputRGB = mix(rgb, lutColor.rgb, lutStrength);
 
-    // Premultiply alpha again for output
-    outputRGB = outputRGB * inputColor.a;
+    // Don't premultiply for output since we're saving to JPEG (no alpha channel)
+    // The output CGContext uses NoneSkipLast format which expects non-premultiplied RGB
 
     // Write output
-    outputTexture.write(float4(outputRGB, inputColor.a), gid);
+    outputTexture.write(float4(outputRGB, 1.0), gid);
 }
 
 // Simple pass-through kernel for testing
