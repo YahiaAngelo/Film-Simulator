@@ -2,6 +2,7 @@
 #include <string>
 #include <android/log.h>
 #include "image_processor.h"
+#include "image_adjustments.h"
 #include "film_grain.h"
 #include "lut_processor.h"
 
@@ -102,6 +103,89 @@ Java_io_github_yahiaangelo_filmsimulator_util_NativeLUTProcessor_addFilmGrainNat
     );
 
     AndroidBitmap_unlockPixels(env, bitmap);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_io_github_yahiaangelo_filmsimulator_util_NativeImageAdjustmentProcessor_applyAdjustmentsNative(
+    JNIEnv* env,
+    jobject /* this */,
+    jobject inputBitmap,
+    jobject outputBitmap,
+    jfloat contrast,
+    jfloat brightness,
+    jfloat saturation,
+    jfloat temperature,
+    jfloat exposure,
+    jfloat grain,
+    jfloat chromaticAberration) {
+
+    // Create adjustments structure
+    ImageAdjustments adjustments;
+    adjustments.contrast = contrast;
+    adjustments.brightness = brightness;
+    adjustments.saturation = saturation;
+    adjustments.temperature = temperature;
+    adjustments.exposure = exposure;
+    adjustments.grain = grain;
+    adjustments.chromaticAberration = chromaticAberration;
+
+    LOGI("Applying adjustments: contrast=%.2f, brightness=%.2f, saturation=%.2f, "
+         "temperature=%.2f, exposure=%.2f, grain=%.2f, aberration=%.2f",
+         contrast, brightness, saturation, temperature, exposure, grain, chromaticAberration);
+
+    bool result = ImageProcessor::processBitmapWithAdjustments(
+        env,
+        inputBitmap,
+        outputBitmap,
+        adjustments
+    );
+
+    return result ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_io_github_yahiaangelo_filmsimulator_util_NativeImageAdjustmentProcessor_applyLutAndAdjustmentsNative(
+    JNIEnv* env,
+    jobject /* this */,
+    jobject inputBitmap,
+    jobject outputBitmap,
+    jstring lutPath,
+    jfloat contrast,
+    jfloat brightness,
+    jfloat saturation,
+    jfloat temperature,
+    jfloat exposure,
+    jfloat grain,
+    jfloat chromaticAberration) {
+
+    const char* lutPathStr = env->GetStringUTFChars(lutPath, nullptr);
+    if (!lutPathStr) {
+        LOGE("Failed to get LUT path string");
+        return JNI_FALSE;
+    }
+
+    // Create adjustments structure
+    ImageAdjustments adjustments;
+    adjustments.contrast = contrast;
+    adjustments.brightness = brightness;
+    adjustments.saturation = saturation;
+    adjustments.temperature = temperature;
+    adjustments.exposure = exposure;
+    adjustments.grain = grain;
+    adjustments.chromaticAberration = chromaticAberration;
+
+    LOGI("Applying LUT and adjustments: LUT=%s", lutPathStr);
+
+    bool result = ImageProcessor::processBitmapWithLutAndAdjustments(
+        env,
+        inputBitmap,
+        outputBitmap,
+        std::string(lutPathStr),
+        adjustments
+    );
+
+    env->ReleaseStringUTFChars(lutPath, lutPathStr);
+    return result ? JNI_TRUE : JNI_FALSE;
 }
 
 } // extern "C"

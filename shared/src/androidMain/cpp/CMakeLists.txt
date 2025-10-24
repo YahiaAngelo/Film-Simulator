@@ -33,6 +33,7 @@ find_library(android-lib android)
 add_library(filmsimulator SHARED
         lut_processor.cpp
         image_processor.cpp
+        image_adjustments.cpp
         film_grain.cpp
         jni_bridge.cpp)
 

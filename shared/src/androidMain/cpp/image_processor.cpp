@@ -1,9 +1,11 @@
 #include "image_processor.h"
 #include "lut_processor.h"
+#include "image_adjustments.h"
 #include <android/log.h>
 #include <vector>
 #include <fstream>
 #include <memory>
+#include <cstring>
 
 #define LOG_TAG "ImageProcessor"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -138,4 +140,153 @@ void ImageProcessor::scaleImage(
             }
         }
     }
+}
+
+bool ImageProcessor::processBitmapWithAdjustments(
+    JNIEnv* env,
+    jobject inputBitmap,
+    jobject outputBitmap,
+    const ImageAdjustments& adjustments) {
+
+    AndroidBitmapInfo inputInfo;
+    AndroidBitmapInfo outputInfo;
+    void* inputPixels;
+    void* outputPixels;
+
+    // Get bitmap info
+    if (AndroidBitmap_getInfo(env, inputBitmap, &inputInfo) < 0) {
+        LOGE("Failed to get input bitmap info");
+        return false;
+    }
+
+    if (AndroidBitmap_getInfo(env, outputBitmap, &outputInfo) < 0) {
+        LOGE("Failed to get output bitmap info");
+        return false;
+    }
+
+    // Check format
+    if (inputInfo.format != ANDROID_BITMAP_FORMAT_RGBA_8888 ||
+        outputInfo.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
+        LOGE("Bitmap format must be RGBA_8888");
+        return false;
+    }
+
+    // Check dimensions match
+    if (inputInfo.width != outputInfo.width || inputInfo.height != outputInfo.height) {
+        LOGE("Bitmap dimensions mismatch");
+        return false;
+    }
+
+    // Lock pixels
+    if (AndroidBitmap_lockPixels(env, inputBitmap, &inputPixels) < 0) {
+        LOGE("Failed to lock input bitmap pixels");
+        return false;
+    }
+
+    if (AndroidBitmap_lockPixels(env, outputBitmap, &outputPixels) < 0) {
+        AndroidBitmap_unlockPixels(env, inputBitmap);
+        LOGE("Failed to lock output bitmap pixels");
+        return false;
+    }
+
+    // Copy input to output first
+    std::memcpy(outputPixels, inputPixels,
+                inputInfo.width * inputInfo.height * 4);
+
+    // Apply adjustments to output
+    ImageAdjustmentProcessor::applyAdjustmentsToImage(
+        static_cast<uint8_t*>(outputPixels),
+        inputInfo.width,
+        inputInfo.height,
+        adjustments
+    );
+
+    // Unlock pixels
+    AndroidBitmap_unlockPixels(env, inputBitmap);
+    AndroidBitmap_unlockPixels(env, outputBitmap);
+
+    LOGI("Successfully applied adjustments to %dx%d image",
+         inputInfo.width, inputInfo.height);
+
+    return true;
+}
+
+bool ImageProcessor::processBitmapWithLutAndAdjustments(
+    JNIEnv* env,
+    jobject inputBitmap,
+    jobject outputBitmap,
+    const std::string& lutPath,
+    const ImageAdjustments& adjustments) {
+
+    AndroidBitmapInfo inputInfo;
+    AndroidBitmapInfo outputInfo;
+    void* inputPixels;
+    void* outputPixels;
+
+    // Get bitmap info
+    if (AndroidBitmap_getInfo(env, inputBitmap, &inputInfo) < 0) {
+        LOGE("Failed to get input bitmap info");
+        return false;
+    }
+
+    if (AndroidBitmap_getInfo(env, outputBitmap, &outputInfo) < 0) {
+        LOGE("Failed to get output bitmap info");
+        return false;
+    }
+
+    // Check format
+    if (inputInfo.format != ANDROID_BITMAP_FORMAT_RGBA_8888 ||
+        outputInfo.format != ANDROID_BITMAP_FORMAT_RGBA_8888) {
+        LOGE("Bitmap format must be RGBA_8888");
+        return false;
+    }
+
+    // Check dimensions match
+    if (inputInfo.width != outputInfo.width || inputInfo.height != outputInfo.height) {
+        LOGE("Bitmap dimensions mismatch");
+        return false;
+    }
+
+    // Lock pixels
+    if (AndroidBitmap_lockPixels(env, inputBitmap, &inputPixels) < 0) {
+        LOGE("Failed to lock input bitmap pixels");
+        return false;
+    }
+
+    if (AndroidBitmap_lockPixels(env, outputBitmap, &outputPixels) < 0) {
+        AndroidBitmap_unlockPixels(env, inputBitmap);
+        LOGE("Failed to lock output bitmap pixels");
+        return false;
+    }
+
+    // First apply LUT
+    bool success = processImageWithLUT(
+        static_cast<uint8_t*>(inputPixels),
+        static_cast<uint8_t*>(outputPixels),
+        inputInfo.width,
+        inputInfo.height,
+        lutPath,
+        false
+    );
+
+    // Then apply adjustments on top of the LUT result
+    if (success) {
+        ImageAdjustmentProcessor::applyAdjustmentsToImage(
+            static_cast<uint8_t*>(outputPixels),
+            inputInfo.width,
+            inputInfo.height,
+            adjustments
+        );
+    }
+
+    // Unlock pixels
+    AndroidBitmap_unlockPixels(env, inputBitmap);
+    AndroidBitmap_unlockPixels(env, outputBitmap);
+
+    if (success) {
+        LOGI("Successfully applied LUT and adjustments to %dx%d image",
+             inputInfo.width, inputInfo.height);
+    }
+
+    return success;
 }

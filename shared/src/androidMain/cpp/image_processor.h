@@ -4,6 +4,7 @@
 #include <jni.h>
 #include <android/bitmap.h>
 #include <string>
+#include "image_adjustments.h"
 
 // Image processing utilities
 class ImageProcessor {
@@ -17,12 +18,29 @@ public:
         bool createThumbnail = false
     );
 
-    // Process bitmap directly
+    // Process bitmap directly with LUT
     static bool processBitmap(
         JNIEnv* env,
         jobject inputBitmap,
         jobject outputBitmap,
         const std::string& lutPath
+    );
+
+    // Process bitmap with image adjustments only
+    static bool processBitmapWithAdjustments(
+        JNIEnv* env,
+        jobject inputBitmap,
+        jobject outputBitmap,
+        const ImageAdjustments& adjustments
+    );
+
+    // Process bitmap with both LUT and adjustments
+    static bool processBitmapWithLutAndAdjustments(
+        JNIEnv* env,
+        jobject inputBitmap,
+        jobject outputBitmap,
+        const std::string& lutPath,
+        const ImageAdjustments& adjustments
     );
 
     // Scale image for thumbnail

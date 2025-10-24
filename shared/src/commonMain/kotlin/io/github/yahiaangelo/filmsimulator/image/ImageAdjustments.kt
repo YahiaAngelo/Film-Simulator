@@ -8,6 +8,7 @@ import io.github.yahiaangelo.filmsimulator.image.modifiers.*
 import io.github.yahiaangelo.filmsimulator.image.export.ShaderExporter
 import io.github.yahiaangelo.filmsimulator.image.shaders.Shaders
 import io.github.yahiaangelo.filmsimulator.image.shaders.Shaders.setShaderUniforms
+import io.github.yahiaangelo.filmsimulator.util.NativeImageAdjustments
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
@@ -24,6 +25,22 @@ data class ImageAdjustments(
     val grain: Float = 0f,
     val chromaticAberration: Float = 0f
 ) {
+
+    /**
+     * Convert to NativeImageAdjustments for native processing
+     * Normalizes values to the ranges expected by native code
+     */
+    fun toNativeAdjustments(): NativeImageAdjustments {
+        return NativeImageAdjustments(
+            contrast = (contrast / 10f).coerceIn(-1f, 1f),
+            brightness = (brightness / 20f).coerceIn(-1f, 1f),
+            saturation = (saturation / 20f).coerceIn(-1f, 1f),
+            temperature = (temperature / 20f).coerceIn(-1f, 1f),
+            exposure = (exposure / 20f).coerceIn(-2f, 2f),
+            grain = (grain / 10f).coerceIn(0f, 1f),
+            chromaticAberration = (chromaticAberration / 10f).coerceIn(0f, 1f)
+        )
+    }
 
     /**
      * Check if all adjustments are at their default values

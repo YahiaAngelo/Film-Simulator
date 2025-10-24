@@ -5,6 +5,7 @@ import okio.Path
 
 const val IMAGE_FILE_NAME = "image.jpeg"
 const val EDITED_IMAGE_FILE_NAME = "image-new.jpeg"
+const val BASE_IMAGE_FILE_NAME = "image-base.jpeg" // Base image with LUT applied (before adjustments)
 const val THUMBNAILS_DIR = "thumbnails"
 
 expect val systemTemporaryPath: Path

@@ -493,4 +493,353 @@
     return success;
 }
 
+#pragma mark - Image Adjustments
+
+- (UIImage *)downscaleImageForPreview:(UIImage *)image maxDimension:(CGFloat)maxDimension {
+    CGFloat width = image.size.width;
+    CGFloat height = image.size.height;
+
+    // If image is already smaller than max dimension, return as-is
+    if (width <= maxDimension && height <= maxDimension) {
+        return image;
+    }
+
+    // Calculate scale factor
+    CGFloat scale = maxDimension / MAX(width, height);
+    CGSize newSize = CGSizeMake(width * scale, height * scale);
+
+    // Create scaled image
+    UIGraphicsBeginImageContextWithOptions(newSize, NO, 1.0);
+    [image drawInRect:CGRectMake(0, 0, newSize.width, newSize.height)];
+    UIImage *scaledImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return scaledImage;
+}
+
+- (BOOL)applyAdjustmentsWithInputPath:(NSString *)inputPath
+                            outputPath:(NSString *)outputPath
+                              contrast:(float)contrast
+                            brightness:(float)brightness
+                            saturation:(float)saturation
+                           temperature:(float)temperature
+                              exposure:(float)exposure
+                                 grain:(float)grain
+                   chromaticAberration:(float)chromaticAberration
+                             forExport:(BOOL)forExport {
+
+    UIImage *inputImage = [UIImage imageWithContentsOfFile:inputPath];
+    if (!inputImage) {
+        return NO;
+    }
+
+    // Downscale for preview only (not for export)
+    UIImage *processImage = forExport ? inputImage : [self downscaleImageForPreview:inputImage maxDimension:1920.0];
+
+    UIImage *outputImage = [self applyAdjustmentsToImage:processImage
+                                                contrast:contrast
+                                              brightness:brightness
+                                              saturation:saturation
+                                             temperature:temperature
+                                                exposure:exposure
+                                                   grain:grain
+                                     chromaticAberration:chromaticAberration];
+
+    if (!outputImage) {
+        return NO;
+    }
+
+    return [self saveImage:outputImage toPath:outputPath];
+}
+
+- (BOOL)applyLUTAndAdjustmentsWithInputPath:(NSString *)inputPath
+                                  outputPath:(NSString *)outputPath
+                                     lutPath:(NSString *)lutPath
+                                    contrast:(float)contrast
+                                  brightness:(float)brightness
+                                  saturation:(float)saturation
+                                 temperature:(float)temperature
+                                    exposure:(float)exposure
+                                       grain:(float)grain
+                         chromaticAberration:(float)chromaticAberration
+                             createThumbnail:(BOOL)createThumbnail {
+
+    // Parse the LUT file
+    NSDictionary *lutData = [self parseCubeFile:lutPath];
+    if (!lutData) {
+        return NO;
+    }
+
+    UIImage *inputImage = [UIImage imageWithContentsOfFile:inputPath];
+    if (!inputImage) {
+        return NO;
+    }
+
+    // First apply LUT using Metal
+    UIImage *lutImage = [self processImage:inputImage
+                                   lutData:lutData
+                          createThumbnail:createThumbnail];
+    if (!lutImage) {
+        return NO;
+    }
+
+    // Then apply adjustments using Core Graphics
+    UIImage *outputImage = [self applyAdjustmentsToImage:lutImage
+                                                contrast:contrast
+                                              brightness:brightness
+                                              saturation:saturation
+                                             temperature:temperature
+                                                exposure:exposure
+                                                   grain:grain
+                                     chromaticAberration:chromaticAberration];
+
+    if (!outputImage) {
+        return NO;
+    }
+
+    return [self saveImage:outputImage toPath:outputPath];
+}
+
+- (UIImage *)applyAdjustmentsToImage:(UIImage *)image
+                            contrast:(float)contrast
+                          brightness:(float)brightness
+                          saturation:(float)saturation
+                         temperature:(float)temperature
+                            exposure:(float)exposure
+                               grain:(float)grain
+                 chromaticAberration:(float)chromaticAberration {
+
+    CGImageRef cgImage = image.CGImage;
+    if (!cgImage) {
+        return nil;
+    }
+
+    NSUInteger width = CGImageGetWidth(cgImage);
+    NSUInteger height = CGImageGetHeight(cgImage);
+    NSUInteger bytesPerRow = width * 4;
+
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+
+    // Allocate pixel buffer
+    unsigned char *pixels = malloc(height * bytesPerRow);
+
+    CGContextRef context = CGBitmapContextCreate(pixels,
+                                                 width,
+                                                 height,
+                                                 8,
+                                                 bytesPerRow,
+                                                 colorSpace,
+                                                 kCGImageAlphaNoneSkipLast | kCGBitmapByteOrderDefault);
+
+    if (!context) {
+        CGColorSpaceRelease(colorSpace);
+        free(pixels);
+        return nil;
+    }
+
+    CGContextDrawImage(context, CGRectMake(0, 0, width, height), cgImage);
+
+    // Process pixels
+    [self processPixels:pixels
+                  width:width
+                 height:height
+               contrast:contrast
+             brightness:brightness
+             saturation:saturation
+            temperature:temperature
+               exposure:exposure
+                  grain:grain
+    chromaticAberration:chromaticAberration];
+
+    // Create output image
+    CGImageRef outputCGImage = CGBitmapContextCreateImage(context);
+    UIImage *outputImage = [UIImage imageWithCGImage:outputCGImage];
+
+    CGImageRelease(outputCGImage);
+    CGContextRelease(context);
+    CGColorSpaceRelease(colorSpace);
+    free(pixels);
+
+    return outputImage;
+}
+
+- (void)processPixels:(unsigned char *)pixels
+                width:(NSUInteger)width
+               height:(NSUInteger)height
+             contrast:(float)contrast
+           brightness:(float)brightness
+           saturation:(float)saturation
+          temperature:(float)temperature
+             exposure:(float)exposure
+                grain:(float)grain
+  chromaticAberration:(float)chromaticAberration {
+
+    // Use fixed seed for consistent grain (matches Android implementation)
+    uint32_t seed = 12345;
+
+    // First pass: Apply all adjustments except chromatic aberration
+    for (NSUInteger y = 0; y < height; y++) {
+        for (NSUInteger x = 0; x < width; x++) {
+            NSUInteger offset = (y * width + x) * 4;
+
+            // Convert to float [0, 1]
+            float r = pixels[offset + 0] / 255.0f;
+            float g = pixels[offset + 1] / 255.0f;
+            float b = pixels[offset + 2] / 255.0f;
+
+            // Apply adjustments in order
+            [self applyExposure:&r g:&g b:&b value:exposure];
+            [self applyContrast:&r g:&g b:&b value:contrast];
+            [self applyBrightness:&r g:&g b:&b value:brightness];
+            [self applySaturation:&r g:&g b:&b value:saturation];
+            [self applyTemperature:&r g:&g b:&b value:temperature];
+            [self applyGrain:&r g:&g b:&b value:grain x:x y:y width:width height:height seed:seed];
+
+            // Clamp and convert back to uint8
+            pixels[offset + 0] = (unsigned char)fminf(fmaxf(r * 255.0f, 0.0f), 255.0f);
+            pixels[offset + 1] = (unsigned char)fminf(fmaxf(g * 255.0f, 0.0f), 255.0f);
+            pixels[offset + 2] = (unsigned char)fminf(fmaxf(b * 255.0f, 0.0f), 255.0f);
+        }
+    }
+
+    // Second pass: Apply chromatic aberration if needed
+    // (Requires sampling from the adjusted image)
+    if (chromaticAberration > 0.0f) {
+        // Create a copy of the buffer for sampling
+        unsigned char *tempBuffer = malloc(height * width * 4);
+        memcpy(tempBuffer, pixels, height * width * 4);
+
+        for (NSUInteger y = 0; y < height; y++) {
+            for (NSUInteger x = 0; x < width; x++) {
+                NSUInteger offset = (y * width + x) * 4;
+
+                float r = pixels[offset + 0] / 255.0f;
+                float g = pixels[offset + 1] / 255.0f;
+                float b = pixels[offset + 2] / 255.0f;
+
+                [self applyChromaticAberration:tempBuffer width:width height:height x:x y:y value:chromaticAberration r:&r g:&g b:&b];
+
+                pixels[offset + 0] = (unsigned char)fminf(fmaxf(r * 255.0f, 0.0f), 255.0f);
+                pixels[offset + 1] = (unsigned char)fminf(fmaxf(g * 255.0f, 0.0f), 255.0f);
+                pixels[offset + 2] = (unsigned char)fminf(fmaxf(b * 255.0f, 0.0f), 255.0f);
+            }
+        }
+
+        free(tempBuffer);
+    }
+}
+
+- (void)applyExposure:(float *)r g:(float *)g b:(float *)b value:(float)exposure {
+    if (exposure == 0.0f) return;
+    float multiplier = powf(2.0f, exposure);
+    *r *= multiplier;
+    *g *= multiplier;
+    *b *= multiplier;
+}
+
+- (void)applyContrast:(float *)r g:(float *)g b:(float *)b value:(float)contrast {
+    if (contrast == 0.0f) return;
+    float multiplier = 1.0f + contrast;
+    *r = (*r - 0.5f) * multiplier + 0.5f;
+    *g = (*g - 0.5f) * multiplier + 0.5f;
+    *b = (*b - 0.5f) * multiplier + 0.5f;
+}
+
+- (void)applyBrightness:(float *)r g:(float *)g b:(float *)b value:(float)brightness {
+    if (brightness == 0.0f) return;
+    *r += brightness;
+    *g += brightness;
+    *b += brightness;
+}
+
+- (void)applySaturation:(float *)r g:(float *)g b:(float *)b value:(float)saturation {
+    if (saturation == 0.0f) return;
+
+    // Calculate luminance
+    float luminance = 0.299f * (*r) + 0.587f * (*g) + 0.114f * (*b);
+
+    // Interpolate between grayscale and original color
+    float multiplier = 1.0f + saturation;
+    *r = luminance + ((*r) - luminance) * multiplier;
+    *g = luminance + ((*g) - luminance) * multiplier;
+    *b = luminance + ((*b) - luminance) * multiplier;
+}
+
+- (void)applyTemperature:(float *)r g:(float *)g b:(float *)b value:(float)temperature {
+    if (temperature == 0.0f) return;
+
+    if (temperature > 0.0f) {
+        // Warm (orange tint)
+        *r += temperature * 0.3f;
+        *g += temperature * 0.1f;
+    } else {
+        // Cool (blue tint)
+        *b += -temperature * 0.3f;
+        *g += -temperature * 0.1f;
+    }
+}
+
+- (void)applyGrain:(float *)r g:(float *)g b:(float *)b value:(float)grain
+                 x:(NSUInteger)x y:(NSUInteger)y width:(NSUInteger)width height:(NSUInteger)height seed:(uint32_t)seed {
+    if (grain == 0.0f) return;
+
+    // Proper pseudo-random noise generator
+    // Based on: fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453)
+    float fx = (float)x + (float)(seed % 1000) * 0.001f;
+    float fy = (float)y + (float)(seed / 1000) * 0.001f;
+
+    // Dot product with magic numbers
+    float dot = fx * 12.9898f + fy * 78.233f;
+
+    // Sin and scale
+    float sinVal = sinf(dot) * 43758.5453f;
+
+    // Fract (get fractional part)
+    float noise = sinVal - floorf(sinVal);  // Range [0, 1]
+
+    // Convert to [-0.5, 0.5] range and scale by grain amount
+    float diff = (noise - 0.5f) * grain;
+
+    *r += diff;
+    *g += diff;
+    *b += diff;
+}
+
+- (void)applyChromaticAberration:(unsigned char *)pixels width:(NSUInteger)width height:(NSUInteger)height
+                               x:(NSUInteger)x y:(NSUInteger)y value:(float)aberration
+                               r:(float *)r g:(float *)g b:(float *)b {
+    if (aberration == 0.0f) return;
+
+    // Calculate normalized UV coordinates [0, 1]
+    float u = ((float)x + 0.5f) / (float)width;
+    float v = ((float)y + 0.5f) / (float)height;
+
+    // Calculate distance from center
+    float dx = u - 0.5f;
+    float dy = v - 0.5f;
+    float d = sqrtf(dx * dx + dy * dy);
+
+    // Scale strength - use much larger multiplier for visible effect
+    // aberration is in [0, 1] range, multiply by 100 for visible aberration
+    float offset = d * aberration * 100.0f;
+
+    // Red channel - offset outward from center
+    float rU = u + dx * offset / (float)width;
+    float rV = v + dy * offset / (float)height;
+    NSInteger rX = (NSInteger)fminf(fmaxf(rU * width, 0.0f), (float)(width - 1));
+    NSInteger rY = (NSInteger)fminf(fmaxf(rV * height, 0.0f), (float)(height - 1));
+    NSUInteger rIndex = (rY * width + rX) * 4;
+    *r = pixels[rIndex] / 255.0f;
+
+    // Green channel stays unchanged (no offset)
+
+    // Blue channel - offset inward toward center
+    float bU = u - dx * offset / (float)width;
+    float bV = v - dy * offset / (float)height;
+    NSInteger bX = (NSInteger)fminf(fmaxf(bU * width, 0.0f), (float)(width - 1));
+    NSInteger bY = (NSInteger)fminf(fmaxf(bV * height, 0.0f), (float)(height - 1));
+    NSUInteger bIndex = (bY * width + bX) * 4;
+    *b = pixels[bIndex + 2] / 255.0f;
+}
+
 @end

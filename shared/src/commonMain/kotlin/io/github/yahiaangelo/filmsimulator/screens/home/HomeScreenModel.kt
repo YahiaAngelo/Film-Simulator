@@ -18,6 +18,7 @@ import io.github.yahiaangelo.filmsimulator.image.export.ShaderExporter
 import io.github.yahiaangelo.filmsimulator.lut.LutDownloadManager
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.util.AppContext
+import io.github.yahiaangelo.filmsimulator.util.NativeImageAdjustmentProcessor
 import io.github.yahiaangelo.filmsimulator.util.convertImageToJpeg
 import io.github.yahiaangelo.filmsimulator.util.fixImageOrientation
 import io.github.yahiaangelo.filmsimulator.util.supportedImageExtensions
@@ -33,6 +34,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.koin.dsl.module
+import util.BASE_IMAGE_FILE_NAME
 import util.EDITED_IMAGE_FILE_NAME
 import util.IMAGE_FILE_NAME
 import util.THUMBNAILS_DIR
@@ -127,6 +129,7 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
     private val _currentAdjustments: MutableStateFlow<ImageAdjustments> = MutableStateFlow(ImageAdjustments())
     private val shaderExporter = ShaderExporter()
     private var currentThumbnailJob: Job? = null
+    private var adjustmentJob: Job? = null // Track adjustment processing job
 
 
 
@@ -191,9 +194,52 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
     }
 
     private fun updateImageAdjustment(update: (ImageAdjustments) -> ImageAdjustments) {
-        if (getPlatform().name == PlatformName.ANDROID && getAndroidSdkVersion() < 33) return
         _currentAdjustments.value = update(_currentAdjustments.value)
         updateUiState { it.copy(imageAdjustments = _currentAdjustments.value) }
+
+        // Apply adjustments in real-time using native processing
+        applyAdjustmentsToPreview()
+    }
+
+    private fun applyAdjustmentsToPreview() {
+        // Cancel previous adjustment job
+        adjustmentJob?.cancel()
+
+        adjustmentJob = screenModelScope.launch(Dispatchers.IO) {
+            try {
+                // Small delay to prevent glitching while maintaining smoothness
+                kotlinx.coroutines.delay(50)
+
+                val nativeProcessor = NativeImageAdjustmentProcessor()
+
+                // If no adjustments, just show the base image
+                if (!_currentAdjustments.value.hasAdjustments()) {
+                    // Copy base image to edited image
+                    val baseBytes = readImageFile(BASE_IMAGE_FILE_NAME)
+                    saveImageFile(EDITED_IMAGE_FILE_NAME, baseBytes)
+                    emitImage(EDITED_IMAGE_FILE_NAME)
+                    return@launch
+                }
+
+                // Apply adjustments using native processing if available
+                if (nativeProcessor.isAvailable()) {
+                    val success = nativeProcessor.applyAdjustments(
+                        inputPath = BASE_IMAGE_FILE_NAME,
+                        outputPath = EDITED_IMAGE_FILE_NAME,
+                        adjustments = _currentAdjustments.value.toNativeAdjustments()
+                    )
+
+                    if (success) {
+                        // Trigger UI update
+                        emitImage(EDITED_IMAGE_FILE_NAME)
+                    }
+                }
+            } catch (e: Exception) {
+                if (e !is kotlinx.coroutines.CancellationException) {
+                    println("Error applying preview adjustments: ${e.message}")
+                }
+            }
+        }
     }
 
     fun selectFilmLut(filmLut: FilmLut) {
@@ -212,9 +258,22 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
                             filmLut = filmLut,
                             image = image,
                             onComplete = { resultImage ->
-                                screenModelScope.launch { _editedImage.emit(resultImage) }
+                                screenModelScope.launch {
+                                    // Save LUT result as base image for adjustments
+                                    withContext(Dispatchers.IO) {
+                                        val lutBytes = readImageFile(resultImage)
+                                        saveImageFile(BASE_IMAGE_FILE_NAME, lutBytes)
+                                        saveImageFile(EDITED_IMAGE_FILE_NAME, lutBytes)
+                                    }
+                                    _editedImage.emit(EDITED_IMAGE_FILE_NAME)
+                                }
                                 updateUiState { it.copy(selectedFilm = filmLut) }
-                                emitImage(resultImage)
+
+                                // Reset adjustments when new LUT is applied
+                                _currentAdjustments.value = ImageAdjustments()
+                                updateUiState { it.copy(imageAdjustments = ImageAdjustments()) }
+
+                                emitImage(EDITED_IMAGE_FILE_NAME)
                             },
                             onError = { error ->
                                 updateUiState { it.copy(userMessage = "Error applying LUT: $error") }
@@ -300,6 +359,7 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
             screenModelScope.launch {
                 saveImageFile(IMAGE_FILE_NAME, platformFile.readBytes())
                 saveImageFile(EDITED_IMAGE_FILE_NAME, platformFile.readBytes())
+                saveImageFile(BASE_IMAGE_FILE_NAME, platformFile.readBytes()) // Initialize base image
                 if (arrayOf("heic", "heif").contains(platformFile.extension.lowercase())) {
                     convertImageToJpeg(IMAGE_FILE_NAME)
                 }
@@ -310,6 +370,12 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
                 // Reset adjustments when new image is loaded
                 _currentAdjustments.emit(ImageAdjustments())
                 updateUiState { it.copy(imageAdjustments = ImageAdjustments()) }
+
+                // Copy to base image as well for consistency
+                withContext(Dispatchers.IO) {
+                    val imageBytes = readImageFile(IMAGE_FILE_NAME)
+                    saveImageFile(BASE_IMAGE_FILE_NAME, imageBytes)
+                }
 
                 emitImage(IMAGE_FILE_NAME)
 
@@ -370,25 +436,62 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
                         )
                     }
 
-                    updateUiState { it.copy(loadingMessage = "Exporting...") }
+                    // Check if we have any adjustments to apply
+                    val hasAdjustments = _currentAdjustments.value.hasAdjustments()
 
-                    // Load the source bitmap
-                    val bytes = withContext(Dispatchers.IO) {
-                        readImageFile(EDITED_IMAGE_FILE_NAME)
-                    }
+                    if (hasAdjustments) {
+                        updateUiState { it.copy(loadingMessage = "Applying adjustments...") }
 
-                    // Convert bytes to ImageBitmap
-                    val sourceBitmap = bytes.decodeToImageBitmap()
-                    // Apply all adjustments and save directly
-                    val success = shaderExporter.applyAdjustmentsAndSave(
-                        sourceBitmap = sourceBitmap,
-                        outputPath = EDITED_IMAGE_FILE_NAME,
-                        adjustments = _currentAdjustments.value,
-                        quality = settingsRepository.getSettings().exportQuality
-                    )
+                        // Try to use native processing first (more efficient)
+                        val nativeProcessor = NativeImageAdjustmentProcessor()
+                        val nativeSuccess = if (nativeProcessor.isAvailable()) {
+                            withContext(Dispatchers.IO) {
+                                // Create temporary output file
+                                val tempOutputPath = "${EDITED_IMAGE_FILE_NAME}_temp"
 
-                    if (!success) {
-                        throw Exception("Failed to save processed image")
+                                val success = nativeProcessor.applyAdjustments(
+                                    inputPath = EDITED_IMAGE_FILE_NAME,
+                                    outputPath = tempOutputPath,
+                                    adjustments = _currentAdjustments.value.toNativeAdjustments(),
+                                    forExport = true  // Use full quality for export
+                                )
+
+                                if (success) {
+                                    // Replace edited image with processed version
+                                    val processedBytes = readImageFile(tempOutputPath)
+                                    saveImageFile(EDITED_IMAGE_FILE_NAME, processedBytes)
+                                }
+
+                                success
+                            }
+                        } else {
+                            false
+                        }
+
+                        // Fall back to shader-based processing if native processing failed
+                        if (!nativeSuccess) {
+                            updateUiState { it.copy(loadingMessage = "Exporting...") }
+
+                            // Load the source bitmap
+                            val bytes = withContext(Dispatchers.IO) {
+                                readImageFile(EDITED_IMAGE_FILE_NAME)
+                            }
+
+                            // Convert bytes to ImageBitmap
+                            val sourceBitmap = bytes.decodeToImageBitmap()
+
+                            // Apply all adjustments and save directly
+                            val success = shaderExporter.applyAdjustmentsAndSave(
+                                sourceBitmap = sourceBitmap,
+                                outputPath = EDITED_IMAGE_FILE_NAME,
+                                adjustments = _currentAdjustments.value,
+                                quality = settingsRepository.getSettings().exportQuality
+                            )
+
+                            if (!success) {
+                                throw Exception("Failed to save processed image")
+                            }
+                        }
                     }
 
                     updateUiState { it.copy(loadingMessage = "Saving to gallery...") }
