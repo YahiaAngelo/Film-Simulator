@@ -59,11 +59,11 @@ lipo -create \
   "$BUILD_DIR/libNativeProcessorBridge_x86_64.a" \
   -output "$BUILD_DIR/libNativeProcessorBridge_simulator.a"
 
-# For Kotlin/Native cinterop, we'll use the device library as default
-# Xcode will handle selecting the right architecture
-cp "$BUILD_DIR/libNativeProcessorBridge_arm64.a" "$BUILD_DIR/libNativeProcessorBridge.a"
+# Use the universal simulator library as default (contains both x86_64 and arm64)
+# This works for Intel Macs, M1 Macs, and device builds
+cp "$BUILD_DIR/libNativeProcessorBridge_simulator.a" "$BUILD_DIR/libNativeProcessorBridge.a"
 
 echo "✅ Static libraries built:"
 echo "   - Device (arm64): $BUILD_DIR/libNativeProcessorBridge_arm64.a"
 echo "   - Simulator (universal): $BUILD_DIR/libNativeProcessorBridge_simulator.a"
-echo "   - Default (for cinterop): $BUILD_DIR/libNativeProcessorBridge.a"
+echo "   - Default (for cinterop): $BUILD_DIR/libNativeProcessorBridge.a (universal)"

@@ -287,6 +287,7 @@ data class HomeScreen(
                                     )
                                     .memoryCacheKey(it)
                                     .diskCacheKey(it)
+                                    .memoryCachePolicy(CachePolicy.DISABLED) // Disable memory cache to ensure real-time updates
                                     .diskCachePolicy(CachePolicy.DISABLED)
                                     .build(),
                                 contentDescription = null,

@@ -28,6 +28,8 @@ endif()
 find_library(log-lib log)
 find_library(jnigraphics-lib jnigraphics)
 find_library(android-lib android)
+find_library(EGL-lib EGL)
+find_library(GLESv2-lib GLESv2)
 
 # Add the native library
 add_library(filmsimulator SHARED
@@ -35,13 +37,16 @@ add_library(filmsimulator SHARED
         image_processor.cpp
         image_adjustments.cpp
         film_grain.cpp
+        realtime_processor.cpp
         jni_bridge.cpp)
 
 # Link libraries
 target_link_libraries(filmsimulator
         ${log-lib}
         ${jnigraphics-lib}
-        ${android-lib})
+        ${android-lib}
+        ${EGL-lib}
+        ${GLESv2-lib})
 
 # Link OpenMP if found
 if(OpenMP_CXX_FOUND)

@@ -130,6 +130,7 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
     private val shaderExporter = ShaderExporter()
     private var currentThumbnailJob: Job? = null
     private var adjustmentJob: Job? = null // Track adjustment processing job
+    private var adjustmentVersion = 0 // Version counter to prevent race conditions
 
 
 
@@ -202,25 +203,28 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
     }
 
     private fun applyAdjustmentsToPreview() {
+        // Increment version to invalidate any in-flight jobs
+        adjustmentVersion++
+        val currentVersion = adjustmentVersion
+
         // Cancel previous adjustment job
         adjustmentJob?.cancel()
 
         adjustmentJob = screenModelScope.launch(Dispatchers.IO) {
             try {
-                // Small delay to prevent glitching while maintaining smoothness
-                kotlinx.coroutines.delay(50)
+                // Reduced delay to 16ms (one frame at 60fps) for better responsiveness
+                kotlinx.coroutines.delay(16)
 
-                val nativeProcessor = NativeImageAdjustmentProcessor()
-
-                // If no adjustments, just show the base image
-                if (!_currentAdjustments.value.hasAdjustments()) {
-                    // Copy base image to edited image
-                    val baseBytes = readImageFile(BASE_IMAGE_FILE_NAME)
-                    saveImageFile(EDITED_IMAGE_FILE_NAME, baseBytes)
-                    emitImage(EDITED_IMAGE_FILE_NAME)
+                // Check if this job is still valid (not superseded by a newer adjustment)
+                if (currentVersion != adjustmentVersion) {
+                    println("Skipping stale adjustment job (version $currentVersion, current $adjustmentVersion)")
                     return@launch
                 }
 
+                val nativeProcessor = NativeImageAdjustmentProcessor()
+
+                // Always process through native code, even when adjustments are at default (0)
+                // This ensures consistent behavior and fixes the slider reset glitch
                 // Apply adjustments using native processing if available
                 if (nativeProcessor.isAvailable()) {
                     val success = nativeProcessor.applyAdjustments(
@@ -229,14 +233,31 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
                         adjustments = _currentAdjustments.value.toNativeAdjustments()
                     )
 
-                    if (success) {
-                        // Trigger UI update
+                    // Double-check version before emitting to prevent race conditions
+                    if (currentVersion == adjustmentVersion) {
+                        if (success) {
+                            // Trigger UI update
+                            emitImage(EDITED_IMAGE_FILE_NAME)
+                        } else {
+                            // Log error but still try to emit the image
+                            println("Warning: Native processor returned false, but continuing to emit image")
+                            emitImage(EDITED_IMAGE_FILE_NAME)
+                        }
+                    } else {
+                        println("Skipping emit for stale job (version $currentVersion, current $adjustmentVersion)")
+                    }
+                } else {
+                    // Fallback: if native processor not available, copy base image
+                    if (currentVersion == adjustmentVersion) {
+                        val baseBytes = readImageFile(BASE_IMAGE_FILE_NAME)
+                        saveImageFile(EDITED_IMAGE_FILE_NAME, baseBytes)
                         emitImage(EDITED_IMAGE_FILE_NAME)
                     }
                 }
             } catch (e: Exception) {
                 if (e !is kotlinx.coroutines.CancellationException) {
                     println("Error applying preview adjustments: ${e.message}")
+                    e.printStackTrace()
                 }
             }
         }
@@ -442,55 +463,28 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
                     if (hasAdjustments) {
                         updateUiState { it.copy(loadingMessage = "Applying adjustments...") }
 
-                        // Try to use native processing first (more efficient)
+                        // Use native processing for consistency with preview
                         val nativeProcessor = NativeImageAdjustmentProcessor()
-                        val nativeSuccess = if (nativeProcessor.isAvailable()) {
-                            withContext(Dispatchers.IO) {
-                                // Create temporary output file
-                                val tempOutputPath = "${EDITED_IMAGE_FILE_NAME}_temp"
 
-                                val success = nativeProcessor.applyAdjustments(
-                                    inputPath = EDITED_IMAGE_FILE_NAME,
-                                    outputPath = tempOutputPath,
-                                    adjustments = _currentAdjustments.value.toNativeAdjustments(),
-                                    forExport = true  // Use full quality for export
-                                )
-
-                                if (success) {
-                                    // Replace edited image with processed version
-                                    val processedBytes = readImageFile(tempOutputPath)
-                                    saveImageFile(EDITED_IMAGE_FILE_NAME, processedBytes)
-                                }
-
-                                success
-                            }
-                        } else {
-                            false
+                        if (!nativeProcessor.isAvailable()) {
+                            throw Exception("Native image processor is not available. Cannot export with adjustments.")
                         }
 
-                        // Fall back to shader-based processing if native processing failed
-                        if (!nativeSuccess) {
-                            updateUiState { it.copy(loadingMessage = "Exporting...") }
-
-                            // Load the source bitmap
-                            val bytes = withContext(Dispatchers.IO) {
-                                readImageFile(EDITED_IMAGE_FILE_NAME)
-                            }
-
-                            // Convert bytes to ImageBitmap
-                            val sourceBitmap = bytes.decodeToImageBitmap()
-
-                            // Apply all adjustments and save directly
-                            val success = shaderExporter.applyAdjustmentsAndSave(
-                                sourceBitmap = sourceBitmap,
+                        val nativeSuccess = withContext(Dispatchers.IO) {
+                            // Apply adjustments to BASE image (not EDITED image) to avoid double application
+                            // EDITED_IMAGE already has preview adjustments applied, so we start fresh from BASE
+                            val success = nativeProcessor.applyAdjustments(
+                                inputPath = BASE_IMAGE_FILE_NAME,
                                 outputPath = EDITED_IMAGE_FILE_NAME,
-                                adjustments = _currentAdjustments.value,
-                                quality = settingsRepository.getSettings().exportQuality
+                                adjustments = _currentAdjustments.value.toNativeAdjustments(),
+                                forExport = true  // Use full quality for export
                             )
 
-                            if (!success) {
-                                throw Exception("Failed to save processed image")
-                            }
+                            success
+                        }
+
+                        if (!nativeSuccess) {
+                            throw Exception("Failed to apply adjustments during export. Please try again.")
                         }
                     }
 
