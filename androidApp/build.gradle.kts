@@ -4,13 +4,17 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+kotlin {
+    jvmToolchain(17)
+}
+
 android {
     namespace = "io.github.yahiaangelo.filmsimulator.android"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId = "io.github.yahiaangelo.filmsimulator.android"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 11
         versionName = "0.5.0"
     }
@@ -29,11 +33,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-    kotlinOptions {
-        jvmTarget = "1.8"
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 

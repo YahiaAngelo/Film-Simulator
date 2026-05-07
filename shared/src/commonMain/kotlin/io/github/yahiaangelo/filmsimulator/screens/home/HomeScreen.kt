@@ -47,19 +47,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material.rememberScaffoldState
-import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
-import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberStandardBottomSheetState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -148,11 +146,7 @@ data class HomeScreen(
     override fun Content() {
         val scope = rememberCoroutineScope()
         val scaffoldState = rememberScaffoldState()
-        val sheetState = rememberBottomSheetScaffoldState(
-            bottomSheetState = rememberStandardBottomSheetState(
-                initialValue = SheetValue.PartiallyExpanded
-            )
-        )
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         val navigator = LocalNavigator.currentOrThrow
         val snackbarHostState = remember { SnackbarHostState() }
 
@@ -431,51 +425,49 @@ data class HomeScreen(
     private fun FilmLutsListBottomSheet(
         state: HomeUiState,
         viewModel: HomeScreenModel,
-        sheetState: BottomSheetScaffoldState,
+        sheetState: SheetState,
     ) {
         val listState: LazyListState = rememberLazyListState()
         val focusManager = LocalFocusManager.current
 
         if (state.showBottomSheet == BottomSheetState.HIDDEN) return
 
-        // Clear focus when bottom sheet state changes to avoid keyboard issues
-        LaunchedEffect(sheetState.bottomSheetState.currentValue) {
+        LaunchedEffect(sheetState.currentValue) {
             focusManager.clearFocus()
         }
 
-        BottomSheetScaffold(
-            scaffoldState = sheetState,
-            sheetPeekHeight = getScreenHeight() * 0.45f,
-            sheetSwipeEnabled = true,
-            sheetDragHandle = {},
-            sheetContent = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .imePadding() // Handle keyboard properly
-                ) {
-                    FilmLutsList(
-                        state = state,
-                        viewModel = viewModel,
-                        listState = listState,
-                        filmLuts = state.filmLuts,
-                        favoriteLuts = state.favoriteLuts,
-                        selectedFilm = state.selectedFilm,
-                        onItemClick = {
-                            state.onItemClick(it)
-                            focusManager.clearFocus() // Clear focus when selecting a film
-                        },
-                        onAddFavoriteClick = state.onAddFavoriteClick,
-                        onRemoveFavoriteClick = state.onRemoveFavoriteClick,
-                        onDismissRequest = {
-                            focusManager.clearFocus()
-                            state.onDismissRequest()
-                        }
-                    )
-                }
-            }
+        ModalBottomSheet(
+            onDismissRequest = {
+                focusManager.clearFocus()
+                state.onDismissRequest()
+            },
+            sheetState = sheetState,
+            dragHandle = {},
         ) {
-            // Content under the bottom sheet (empty in this case)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+            ) {
+                FilmLutsList(
+                    state = state,
+                    viewModel = viewModel,
+                    listState = listState,
+                    filmLuts = state.filmLuts,
+                    favoriteLuts = state.favoriteLuts,
+                    selectedFilm = state.selectedFilm,
+                    onItemClick = {
+                        state.onItemClick(it)
+                        focusManager.clearFocus()
+                    },
+                    onAddFavoriteClick = state.onAddFavoriteClick,
+                    onRemoveFavoriteClick = state.onRemoveFavoriteClick,
+                    onDismissRequest = {
+                        focusManager.clearFocus()
+                        state.onDismissRequest()
+                    }
+                )
+            }
         }
     }
 

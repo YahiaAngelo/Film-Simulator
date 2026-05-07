@@ -30,7 +30,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.koin.dsl.module
 import util.EDITED_IMAGE_FILE_NAME
@@ -41,6 +40,7 @@ import util.readImageFile
 import util.saveImageFile
 import util.saveImageToGallery
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.ExperimentalTime
 
 val homeScreenModule = module {
     factory { HomeScreenModel(get(), get(), get()) }
@@ -333,8 +333,9 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
         updateUiState { it.copy(showBottomSheet = BottomSheetState.HIDDEN) }
     }
 
+    @OptIn(ExperimentalTime::class)
     private fun emitImage(image: String) {
-        updateUiState { it.copy(image = "$image?${Clock.System.now().epochSeconds}") }
+        updateUiState { it.copy(image = "$image?${kotlin.time.Clock.System.now().epochSeconds}") }
     }
 
     fun snackbarMessageShown() {
