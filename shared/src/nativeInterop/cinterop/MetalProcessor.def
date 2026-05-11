@@ -1,6 +1,0 @@
-language = Objective-C
-headers = MetalProcessor.h
-compilerOpts = -framework Metal -framework MetalKit -framework UIKit -framework CoreGraphics -framework Foundation
-linkerOpts = -framework Metal -framework MetalKit -framework UIKit -framework CoreGraphics -framework Foundation
-
-excludedFunctions = MetalProcessorBridge_init

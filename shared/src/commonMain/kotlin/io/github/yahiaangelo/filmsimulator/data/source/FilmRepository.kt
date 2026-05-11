@@ -1,6 +1,5 @@
 package io.github.yahiaangelo.filmsimulator.data.source
 
-import androidx.compose.ui.graphics.ImageBitmap
 import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
 import io.github.yahiaangelo.filmsimulator.LutCube
@@ -35,8 +34,6 @@ interface FilmRepository {
     suspend fun generateLutThumbnail(filmLut: FilmLut, inputImage: String): String
 
     suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, image: String, onComplete: (String) -> Unit, onError: (String) -> Unit)
-
-    suspend fun addFilmGrain(scope: CoroutineScope, image: String, intensity: Float, onComplete: (String) -> Unit, onError: (String) -> Unit)
 
     // Methods for handling favorite LUTs
     fun getFavoriteFilmsStream(): Flow<List<FavoriteLut>>

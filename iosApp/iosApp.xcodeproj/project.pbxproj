@@ -7,22 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		00D12DE02E8FEE06007047FD /* LUTProcessor.metal in Sources */ = {isa = PBXBuildFile; fileRef = 00D12DD72E8FEBF6007047FD /* LUTProcessor.metal */; };
-		00D12DE12E8FEE0A007047FD /* MetalLUTProcessor.m in Sources */ = {isa = PBXBuildFile; fileRef = 00D12DD92E8FEBF6007047FD /* MetalLUTProcessor.m */; };
-		00D12DE22E8FEE0C007047FD /* MetalLUTProcessorWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00D12DDA2E8FEBF6007047FD /* MetalLUTProcessorWrapper.swift */; };
 		058557BB273AAA24004C7B11 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557BA273AAA24004C7B11 /* Assets.xcassets */; };
 		058557D9273AAEEB004C7B11 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */; };
 		2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2152FB032600AC8F00CF470E /* iOSApp.swift */; };
 		68020A0C8119ED27BABE30DB /* Pods_iosApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C8FBDAD5FA0429E6E6050ED /* Pods_iosApp.framework */; };
 		7555FF83242A565900829871 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7555FF82242A565900829871 /* ContentView.swift */; };
-		99E25CF91C732C9B06225A91 /* NativeProcessorBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAD502C5B6942CF587FBF8BC /* NativeProcessorBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		00D12DD72E8FEBF6007047FD /* LUTProcessor.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = LUTProcessor.metal; sourceTree = "<group>"; };
-		00D12DD82E8FEBF6007047FD /* MetalLUTProcessor.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MetalLUTProcessor.h; sourceTree = "<group>"; };
-		00D12DD92E8FEBF6007047FD /* MetalLUTProcessor.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MetalLUTProcessor.m; sourceTree = "<group>"; };
-		00D12DDA2E8FEBF6007047FD /* MetalLUTProcessorWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalLUTProcessorWrapper.swift; sourceTree = "<group>"; };
 		058557BA273AAA24004C7B11 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		058557D8273AAEEB004C7B11 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		2152FB032600AC8F00CF470E /* iOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iOSApp.swift; sourceTree = "<group>"; };
@@ -31,7 +23,6 @@
 		7555FF8C242A565B00829871 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7C8FBDAD5FA0429E6E6050ED /* Pods_iosApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iosApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAC6DA4966C203EF8E55EA4F /* Pods-iosApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.release.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.release.xcconfig"; sourceTree = "<group>"; };
-		DAD502C5B6942CF587FBF8BC /* NativeProcessorBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NativeProcessorBridge.swift; sourceTree = "<group>"; };
 		EFBCB1F3BC90B18D922FA611 /* Pods-iosApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iosApp.debug.xcconfig"; path = "Target Support Files/Pods-iosApp/Pods-iosApp.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -90,11 +81,6 @@
 				7555FF8C242A565B00829871 /* Info.plist */,
 				2152FB032600AC8F00CF470E /* iOSApp.swift */,
 				058557D7273AAEEB004C7B11 /* Preview Content */,
-				00D12DD72E8FEBF6007047FD /* LUTProcessor.metal */,
-				00D12DD82E8FEBF6007047FD /* MetalLUTProcessor.h */,
-				00D12DD92E8FEBF6007047FD /* MetalLUTProcessor.m */,
-				00D12DDA2E8FEBF6007047FD /* MetalLUTProcessorWrapper.swift */,
-				DAD502C5B6942CF587FBF8BC /* NativeProcessorBridge.swift */,
 			);
 			path = iosApp;
 			sourceTree = "<group>";
@@ -223,12 +209,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				00D12DE22E8FEE0C007047FD /* MetalLUTProcessorWrapper.swift in Sources */,
-				00D12DE12E8FEE0A007047FD /* MetalLUTProcessor.m in Sources */,
-				00D12DE02E8FEE06007047FD /* LUTProcessor.metal in Sources */,
 				2152FB042600AC8F00CF470E /* iOSApp.swift in Sources */,
 				7555FF83242A565900829871 /* ContentView.swift in Sources */,
-				99E25CF91C732C9B06225A91 /* NativeProcessorBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -393,7 +375,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.yahiaangelo.filmsimulator.iosApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = "iosApp/iosApp-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -435,7 +417,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.yahiaangelo.filmsimulator.iosApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = "iosApp/iosApp-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

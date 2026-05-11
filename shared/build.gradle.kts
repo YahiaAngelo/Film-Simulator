@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinCocoapods)
     alias(libs.plugins.androidLibrary)
-    alias(libs.plugins.jetbrainsCompose) version "1.7.1"
+    alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
     id("org.jetbrains.kotlin.plugin.serialization")  version "2.3.21"
     id("app.cash.sqldelight") version "2.3.2"
@@ -29,26 +29,8 @@ kotlin {
         apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1)
     }
     jvmToolchain(17)
-    // iOS targets with cinterop for NativeProcessorBridge
-    listOf(
-        iosX64(),
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.compilations.getByName("main") {
-            cinterops.create("NativeProcessorBridge") {
-                defFile = project.file("src/nativeInterop/cinterop/NativeProcessorBridge.def")
-                packageName = "io.github.yahiaangelo.filmsimulator.bridge"
-
-                // Include directories for headers
-                includeDirs.headerFilterOnly(project.file("../iosApp/iosApp"))
-                includeDirs.headerFilterOnly(project.file("src/nativeInterop/cinterop"))
-
-                // Add library path as extraOpts
-                extraOpts("-libraryPath", project.file("src/nativeInterop/cinterop/build").absolutePath)
-            }
-        }
-    }
+    iosArm64()
+    iosSimulatorArm64()
 
     cocoapods {
         summary = "Some description for the Shared Module"
@@ -81,6 +63,7 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material)
             implementation(compose.material3)
+            implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(libs.kotlinx.coroutines.core)
@@ -133,37 +116,14 @@ kotlin {
     task("testClasses")
 }
 
-// Build static library for NativeProcessorBridge stub
-val buildNativeProcessorBridgeStub by tasks.registering(Exec::class) {
-    workingDir = project.file("src/nativeInterop/cinterop")
-    commandLine("bash", "build_stub.sh")
-    outputs.file(project.file("src/nativeInterop/cinterop/build/libNativeProcessorBridge.a"))
-}
-
-// Make cinterop tasks depend on the static library
-tasks.matching { it.name.contains("cinteropNativeProcessorBridge") }.configureEach {
-    dependsOn(buildNativeProcessorBridgeStub)
-}
-
 android {
     namespace = "io.github.yahiaangelo.filmsimulator"
     compileSdk = 37
     defaultConfig {
         minSdk = 24
-
-        ndk {
-            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64"))
-        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    externalNativeBuild {
-        cmake {
-            path = file("src/androidMain/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
     }
 }
