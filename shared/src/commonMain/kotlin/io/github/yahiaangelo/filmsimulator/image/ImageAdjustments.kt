@@ -10,7 +10,7 @@ import io.github.yahiaangelo.filmsimulator.image.shaders.Shaders
 import io.github.yahiaangelo.filmsimulator.image.shaders.Shaders.setShaderUniforms
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * Data class that holds all image adjustment values
@@ -68,6 +68,7 @@ data class ImageAdjustments(
  * A composable wrapper that wraps the image content to isolate the shader effects
  * This prevents the shaders from affecting the entire view
  */
+@OptIn(ExperimentalTime::class)
 @Composable
 fun ImageWithAdjustments(
     adjustments: ImageAdjustments,
@@ -84,7 +85,7 @@ fun ImageWithAdjustments(
                 uniformsBlock = {
                     adjustments.setShaderUniforms(
                         provider = this,
-                        timeValue = (Clock.System.now().toEpochMilliseconds() % 10000) / 10000f
+                        timeValue = (kotlin.time.Clock.System.now().toEpochMilliseconds() % 10000) / 10000f
                     )
                 }
             )
