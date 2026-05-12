@@ -4,10 +4,10 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinCocoapods)
     alias(libs.plugins.androidLibrary)
-    alias(libs.plugins.jetbrainsCompose) version "1.7.1"
+    alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
-    id("org.jetbrains.kotlin.plugin.serialization")  version "2.0.21"
-    id("app.cash.sqldelight") version "2.0.1"
+    id("org.jetbrains.kotlin.plugin.serialization")  version "2.3.21"
+    id("app.cash.sqldelight") version "2.3.2"
 }
 
 
@@ -22,13 +22,13 @@ sqldelight {
 kotlin {
     androidTarget {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_1_8)
+            jvmTarget.set(JvmTarget.JVM_17)
         }
     }
     compilerOptions {
-        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1)
     }
-    iosX64()
+    jvmToolchain(17)
     iosArm64()
     iosSimulatorArm64()
 
@@ -41,11 +41,6 @@ kotlin {
         framework {
             baseName = "shared"
             isStatic = true
-        }
-        pod("ffmpeg-kit-ios-min") {
-            moduleName = "ffmpegkit"
-            version = "6.0"
-            extraOpts = listOf("-compiler-option", "-fmodules")
         }
     }
 
@@ -61,7 +56,6 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.koin.android)
             implementation(libs.android.driver)
-            implementation (libs.ffmpeg.kit.min)
         }
 
         commonMain.dependencies {
@@ -69,6 +63,7 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material)
             implementation(compose.material3)
+            implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(libs.kotlinx.coroutines.core)
@@ -109,6 +104,10 @@ kotlin {
             implementation(libs.native.driver)
             implementation(libs.ktor.client.darwin)
         }
+
+        iosMain.dependencies {
+            // iOS-specific dependencies
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
@@ -119,12 +118,12 @@ kotlin {
 
 android {
     namespace = "io.github.yahiaangelo.filmsimulator"
-    compileSdk = 35
+    compileSdk = 37
     defaultConfig {
         minSdk = 24
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }

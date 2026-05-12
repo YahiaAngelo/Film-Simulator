@@ -1,22 +1,15 @@
 PODS:
-  - ffmpeg-kit-ios-min (6.0)
-  - shared (1.0):
-    - ffmpeg-kit-ios-min (= 6.0)
+  - shared (1.0)
 
 DEPENDENCIES:
   - shared (from `../shared`)
-
-SPEC REPOS:
-  trunk:
-    - ffmpeg-kit-ios-min
 
 EXTERNAL SOURCES:
   shared:
     :path: "../shared"
 
 SPEC CHECKSUMS:
-  ffmpeg-kit-ios-min: 4e9a088f4ee9629435960b9d68e54848975f1931
-  shared: 6419e7c8fb21241ba0c49addcb31dda09030478e
+  shared: 98ebe28c5278cdfefa3243a7df896315f5542716
 
 PODFILE CHECKSUM: 78d6cc1b71b232202c48a29d4e6c34972c534c73
 
