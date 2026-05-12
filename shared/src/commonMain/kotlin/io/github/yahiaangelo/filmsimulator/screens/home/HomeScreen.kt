@@ -68,7 +68,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
@@ -113,11 +112,7 @@ import io.github.vinceglb.filekit.core.PickerMode
 import io.github.vinceglb.filekit.core.PickerType
 import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
-import io.github.yahiaangelo.filmsimulator.PlatformName
 import io.github.yahiaangelo.filmsimulator.data.source.network.GITHUB_BASE_URL
-import io.github.yahiaangelo.filmsimulator.getAndroidSdkVersion
-import io.github.yahiaangelo.filmsimulator.getPlatform
-import io.github.yahiaangelo.filmsimulator.image.ImageWithAdjustments
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.screens.settings.SettingsScreen
 import io.github.yahiaangelo.filmsimulator.util.getScreenHeight
@@ -130,7 +125,6 @@ import io.github.yahiaangelo.filmsimulator.view.LutDownloadProgressDialog
 import io.github.yahiaangelo.filmsimulator.view.ProgressDialog
 import io.github.yahiaangelo.filmsimulator.view.SettingsSlider
 import kotlinx.coroutines.delay
-import okio.FileSystem
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import util.THUMBNAILS_DIR
@@ -162,7 +156,8 @@ data class HomeScreen(
 
 
         val homeScreenState = HomeUiState(
-            image = uiState.image,
+            previewImage = uiState.previewImage,
+            previewToken = uiState.previewToken,
             selectedFilm = uiState.selectedFilm,
             isLoading = uiState.isLoading,
             loadingMessage = uiState.loadingMessage,
@@ -186,12 +181,14 @@ data class HomeScreen(
             onRemoveFavoriteClick = vm::removeFavoriteFilm,
             // Image adjustment handlers
             onContrastChange = vm::adjustContrast,
-            onBrightnessChange = vm::adjustBrightness,
+            onShadowsChange = vm::adjustShadows,
+            onHighlightsChange = vm::adjustHighlights,
             onSaturationChange = vm::adjustSaturation,
             onTemperatureChange = vm::adjustTemperature,
             onExposureChange = vm::adjustExposure,
             onGrainChange = vm::addGrain,
             onChromaticAberrationChange = vm::addChromaticAberration,
+            onLutIntensityChange = vm::adjustLutIntensity,
             showDownloadDialog = uiState.showDownloadDialog,
             showDownloadProgress = uiState.showDownloadProgress,
             downloadProgress = uiState.downloadProgress,
@@ -266,34 +263,21 @@ data class HomeScreen(
                     onClick = state.onImageChooseClick
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        state.image?.let {
-                            // Wrap the image with adjustments
-                            ImageWithAdjustments(
-                                adjustments = state.imageAdjustments,
-                                modifier = Modifier
-                                    .fillMaxSize(),
-                                applyModifiers = state.showAdjustments
-                            ) {
-                                CoilZoomAsyncImage(
-                                    modifier = Modifier.fillMaxSize(),
-                                    zoomState = zoomState,
-                                    model = ImageRequest.Builder(LocalPlatformContext.current)
-                                        .data(
-                                            "${FileSystem.SYSTEM_TEMPORARY_DIRECTORY}/${
-                                                it.substringBefore(
-                                                    "?"
-                                                )
-                                            }"
-                                        )
-                                        .memoryCacheKey(it)
-                                        .diskCacheKey(it)
-                                        .diskCachePolicy(CachePolicy.DISABLED)
-                                        .build(),
-                                    contentDescription = null,
-                                    scrollBar = null
-                                )
-                            }
-
+                        state.previewImage?.let { bytes ->
+                            val cacheKey = "preview-${state.previewToken}"
+                            CoilZoomAsyncImage(
+                                modifier = Modifier.fillMaxSize(),
+                                zoomState = zoomState,
+                                model = ImageRequest.Builder(LocalPlatformContext.current)
+                                    .data(bytes)
+                                    .memoryCacheKey(cacheKey)
+                                    .diskCacheKey(cacheKey)
+                                    .memoryCachePolicy(CachePolicy.DISABLED)
+                                    .diskCachePolicy(CachePolicy.DISABLED)
+                                    .build(),
+                                contentDescription = null,
+                                scrollBar = null
+                            )
                         } ?: IconButton(
                             modifier = Modifier.align(Alignment.Center).size(150.dp),
                             onClick = state.onImageChooseClick
@@ -345,78 +329,72 @@ data class HomeScreen(
         state: HomeUiState,
         modifier: Modifier = Modifier
     ) {
-        Box(modifier = modifier) {
-            // Image adjustment sliders
-            Column {
-                CenteredSettingsSlider(
-                    name = "Exposure",
-                    value = state.imageAdjustments.exposure,
-                    onValueChange = state.onExposureChange,
-                    range = -20f..20f,
-                    steps = 1
-                )
-                CenteredSettingsSlider(
-                    name = "Temperature",
-                    value = state.imageAdjustments.temperature,
-                    onValueChange = state.onTemperatureChange,
-                    range = -20f..20f,
-                    steps = 1
-                )
-                CenteredSettingsSlider(
-                    name = "Contrast",
-                    value = state.imageAdjustments.contrast,
-                    onValueChange = state.onContrastChange,
-                    range = -20f..20f,
-                    steps = 1
-                )
-                CenteredSettingsSlider(
-                    name = "Brightness",
-                    value = state.imageAdjustments.brightness,
-                    onValueChange = state.onBrightnessChange,
-                    range = -20f..20f,
-                    steps = 1
-                )
-                CenteredSettingsSlider(
-                    name = "Saturation",
-                    value = state.imageAdjustments.saturation,
-                    onValueChange = state.onSaturationChange,
-                    range = -20f..20f,
-                    steps = 1
-                )
+        Column(modifier = modifier) {
+            if (state.selectedFilm != null) {
                 SettingsSlider(
-                    name = "Grain",
-                    value = state.imageAdjustments.grain,
-                    onValueChange = state.onGrainChange,
-                    range = 0f..10f,
-                    steps = 20
-                )
-                SettingsSlider(
-                    name = "Chromatic Aberration",
-                    value = state.imageAdjustments.chromaticAberration,
-                    onValueChange = state.onChromaticAberrationChange,
-                    range = 0f..10f,
-                    steps = 10
+                    name = "LUT Intensity",
+                    value = state.imageAdjustments.lutIntensity,
+                    onValueChange = state.onLutIntensityChange,
+                    range = 0f..100f,
+                    steps = 100
                 )
             }
-
-            // Overlay for Android < 13 (TIRAMISU)
-            if (getPlatform().name == PlatformName.ANDROID && getAndroidSdkVersion() < 33) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .alpha(0.8f)
-                        .background(MaterialTheme.colorScheme.surface),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Image adjustments require Android 13 and above",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
+            CenteredSettingsSlider(
+                name = "Exposure",
+                value = state.imageAdjustments.exposure,
+                onValueChange = state.onExposureChange,
+                range = -20f..20f,
+                steps = 1
+            )
+            CenteredSettingsSlider(
+                name = "Temperature",
+                value = state.imageAdjustments.temperature,
+                onValueChange = state.onTemperatureChange,
+                range = -20f..20f,
+                steps = 1
+            )
+            CenteredSettingsSlider(
+                name = "Contrast",
+                value = state.imageAdjustments.contrast,
+                onValueChange = state.onContrastChange,
+                range = -20f..20f,
+                steps = 1
+            )
+            CenteredSettingsSlider(
+                name = "Shadows",
+                value = state.imageAdjustments.shadows,
+                onValueChange = state.onShadowsChange,
+                range = -20f..20f,
+                steps = 1
+            )
+            CenteredSettingsSlider(
+                name = "Highlights",
+                value = state.imageAdjustments.highlights,
+                onValueChange = state.onHighlightsChange,
+                range = -20f..20f,
+                steps = 1
+            )
+            CenteredSettingsSlider(
+                name = "Saturation",
+                value = state.imageAdjustments.saturation,
+                onValueChange = state.onSaturationChange,
+                range = -20f..20f,
+                steps = 1
+            )
+            SettingsSlider(
+                name = "Grain",
+                value = state.imageAdjustments.grain,
+                onValueChange = state.onGrainChange,
+                range = 0f..10f,
+                steps = 20
+            )
+            SettingsSlider(
+                name = "Chromatic Aberration",
+                value = state.imageAdjustments.chromaticAberration,
+                onValueChange = state.onChromaticAberrationChange,
+                range = 0f..10f,
+                steps = 10
+            )
         }
     }
 

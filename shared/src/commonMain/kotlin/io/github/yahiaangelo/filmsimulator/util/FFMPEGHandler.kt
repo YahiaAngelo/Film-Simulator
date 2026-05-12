@@ -1,6 +1,6 @@
 package util
 
-import io.github.yahiaangelo.filmsimulator.image.SkiaLutProcessor
+import io.github.yahiaangelo.filmsimulator.image.SkiaImageProcessor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okio.FileSystem
@@ -9,7 +9,7 @@ import okio.FileSystem
  * Cross-platform image-processing entry points used by [io.github.yahiaangelo.filmsimulator.data.source.DefaultFilmRepository]
  * and the screen models.
  *
- * Backed by [SkiaLutProcessor], so the same code path runs on every Skia-capable target
+ * Backed by [SkiaImageProcessor], so the same code path runs on every Skia-capable target
  * (Android + iOS today). The previous expect/actual implementation routed to FFmpeg-kit,
  * Android NDK C++, or iOS Core Image / Metal — all of which have been retired.
  *
@@ -17,7 +17,7 @@ import okio.FileSystem
  * [THUMBNAILS_DIR] subdirectory under the same root.
  */
 
-private val processor = SkiaLutProcessor()
+private val processor = SkiaImageProcessor()
 
 suspend fun apply3dLutAsync(
     inputFile: String,

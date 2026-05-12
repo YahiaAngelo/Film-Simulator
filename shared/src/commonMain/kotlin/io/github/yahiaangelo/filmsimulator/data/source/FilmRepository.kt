@@ -35,6 +35,13 @@ interface FilmRepository {
 
     suspend fun applyFilmLut(scope: CoroutineScope, filmLut: FilmLut, image: String, onComplete: (String) -> Unit, onError: (String) -> Unit)
 
+    /**
+     * Return the raw .cube bytes for [filmLut], downloading them on first use.
+     * Used by the live-preview pipeline so it can render the LUT directly through
+     * Skia without going through the on-disk roundtrip that [applyFilmLut] does.
+     */
+    suspend fun getLutBytes(filmLut: FilmLut): ByteArray?
+
     // Methods for handling favorite LUTs
     fun getFavoriteFilmsStream(): Flow<List<FavoriteLut>>
 
