@@ -139,6 +139,15 @@ internal class DefaultFilmRepository(
         }, onError = onError)
     }
 
+    override suspend fun getLutBytes(filmLut: FilmLut): ByteArray? = withContext(Dispatchers.IO) {
+        var cube = getLutCube(filmLut.lut_name)
+        if (cube == null) {
+            runCatching { downloadLutCube(filmLut.lut_name) }.getOrElse { return@withContext null }
+            cube = getLutCube(filmLut.lut_name)
+        }
+        cube?.file_
+    }
+
     private suspend fun applyLutFile(scope: CoroutineScope, lutCube: LutCube, image: String, onComplete: (String) -> Unit, onError: (String) -> Unit) {
         withContext(Dispatchers.IO) {
             val lutFile = "lut.cube".also { saveLutFile(fileName = it, lut = lutCube.file_) }

@@ -7,14 +7,11 @@ import io.github.vinceglb.filekit.core.PlatformFile
 import io.github.vinceglb.filekit.core.extension
 import io.github.yahiaangelo.filmsimulator.FavoriteLut
 import io.github.yahiaangelo.filmsimulator.FilmLut
-import io.github.yahiaangelo.filmsimulator.PlatformName
 import io.github.yahiaangelo.filmsimulator.data.source.FilmRepository
 import io.github.yahiaangelo.filmsimulator.data.source.SettingsRepository
 import io.github.yahiaangelo.filmsimulator.data.source.toFavoriteLut
-import io.github.yahiaangelo.filmsimulator.getAndroidSdkVersion
-import io.github.yahiaangelo.filmsimulator.getPlatform
 import io.github.yahiaangelo.filmsimulator.image.ImageAdjustments
-import io.github.yahiaangelo.filmsimulator.image.export.ShaderExporter
+import io.github.yahiaangelo.filmsimulator.image.SkiaImageProcessor
 import io.github.yahiaangelo.filmsimulator.lut.LutDownloadManager
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
 import io.github.yahiaangelo.filmsimulator.util.AppContext
@@ -22,15 +19,18 @@ import io.github.yahiaangelo.filmsimulator.util.convertImageToJpeg
 import io.github.yahiaangelo.filmsimulator.util.fixImageOrientation
 import io.github.yahiaangelo.filmsimulator.util.supportedImageExtensions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.koin.dsl.module
 import util.EDITED_IMAGE_FILE_NAME
 import util.IMAGE_FILE_NAME
@@ -40,17 +40,23 @@ import util.readImageFile
 import util.saveImageFile
 import util.saveImageToGallery
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.ExperimentalTime
 
 val homeScreenModule = module {
     factory { HomeScreenModel(get(), get(), get()) }
 }
 
+/** Debounce window before re-rendering the preview after a slider change. */
+private const val PREVIEW_DEBOUNCE_MS = 25L
+
+/** JPEG quality used for the preview pipeline — lower than export to keep encode fast. */
+private const val PREVIEW_QUALITY = 80
+
 /**
  * UiState for the Main Screen
  */
 data class HomeUiState(
-    val image: String? = null,
+    val previewImage: ByteArray? = null,
+    val previewToken: Long = 0L,
     val selectedFilm: FilmLut? = null,
     val isLoading: Boolean = false,
     val loadingMessage: String = "",
@@ -75,12 +81,14 @@ data class HomeUiState(
     val onRemoveFavoriteClick: (FilmLut) -> Unit = {},
     // Individual adjustment handlers
     val onContrastChange: (Float) -> Unit = {},
-    val onBrightnessChange: (Float) -> Unit = {},
+    val onShadowsChange: (Float) -> Unit = {},
+    val onHighlightsChange: (Float) -> Unit = {},
     val onSaturationChange: (Float) -> Unit = {},
     val onTemperatureChange: (Float) -> Unit = {},
     val onExposureChange: (Float) -> Unit = {},
     val onGrainChange: (Float) -> Unit = {},
     val onChromaticAberrationChange: (Float) -> Unit = {},
+    val onLutIntensityChange: (Float) -> Unit = {},
     val showDownloadDialog: Boolean = false,
     val showDownloadProgress: Boolean = false,
     val downloadProgress: Pair<Int, Int> = 0 to 0,
@@ -94,40 +102,60 @@ enum class BottomSheetState {
 }
 
 /**
- * ViewModel for the Main Screen
+ * ViewModel for the Main Screen.
+ *
+ * Preview pipeline: the screen model holds the decoded source image bytes and the
+ * currently selected LUT bytes. Every change to either (or to [ImageAdjustments])
+ * triggers a debounced re-render through [SkiaImageProcessor] at a preview-friendly
+ * resolution; the resulting JPEG bytes are pushed into [HomeUiState.previewImage]
+ * for Coil to display. Export reuses the same processor at full resolution.
  */
-data class HomeScreenModel(val repository: FilmRepository, val settingsRepository: SettingsRepository, val lutDownloadManager: LutDownloadManager) : ScreenModel {
+data class HomeScreenModel(
+    val repository: FilmRepository,
+    val settingsRepository: SettingsRepository,
+    val lutDownloadManager: LutDownloadManager,
+) : ScreenModel {
 
     private val _uiState: MutableStateFlow<HomeUiState> = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState
     private val konnectivity = Konnectivity()
 
+    private val processor = SkiaImageProcessor()
+    private val previewTrigger: MutableStateFlow<PreviewRequest?> = MutableStateFlow(null)
+    private var previewVersion = 0L
+    private var sourceBytes: ByteArray? = null
+    private var currentLutBytes: ByteArray? = null
+    private var currentAdjustments: ImageAdjustments = ImageAdjustments()
+    private var currentThumbnailJob: Job? = null
+
+    private data class PreviewRequest(
+        val sourceKey: Int,
+        val lutKey: Int,
+        val adjustments: ImageAdjustments,
+        val showOriginal: Boolean,
+    )
 
     init {
         refresh()
         addSettingsListeners()
         screenModelScope.launch {
             lutDownloadManager.uiState.collect { downloadState ->
-                updateUiState { it.copy(
-                    showDownloadDialog = downloadState.showDownloadDialog,
-                    showDownloadProgress = downloadState.showDownloadProgress,
-                    downloadProgress = downloadState.downloadProgress
-                )}
+                updateUiState {
+                    it.copy(
+                        showDownloadDialog = downloadState.showDownloadDialog,
+                        showDownloadProgress = downloadState.showDownloadProgress,
+                        downloadProgress = downloadState.downloadProgress,
+                    )
+                }
             }
         }
+        startPreviewLoop()
     }
 
 
     private fun updateUiState(update: (HomeUiState) -> HomeUiState) {
         _uiState.value = update(_uiState.value)
     }
-
-    private val _originalImage: MutableStateFlow<String?> = MutableStateFlow(null)
-    private val _editedImage: MutableStateFlow<String?> = MutableStateFlow(null)
-    private val _currentAdjustments: MutableStateFlow<ImageAdjustments> = MutableStateFlow(ImageAdjustments())
-    private val shaderExporter = ShaderExporter()
-    private var currentThumbnailJob: Job? = null
-
 
 
     fun refresh() {
@@ -139,7 +167,14 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
                 }
                 val newFilmList = repository.getFilmsStream().first()
                 val newFavoriteList = repository.getFavoriteFilmsStream().first()
-                updateUiState { it.copy(filmLuts = newFilmList, favoriteLuts = newFavoriteList, defaultPickerType = settingsRepository.getSettings().defaultPicker, userMessage = "Data refreshed successfully.") }
+                updateUiState {
+                    it.copy(
+                        filmLuts = newFilmList,
+                        favoriteLuts = newFavoriteList,
+                        defaultPickerType = settingsRepository.getSettings().defaultPicker,
+                        userMessage = "Data refreshed successfully.",
+                    )
+                }
             } catch (e: Exception) {
                 updateUiState { it.copy(userMessage = "Error refreshing data: ${e.message}") }
             } finally {
@@ -161,132 +196,92 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
         }
     }
 
-    // Image adjustment methods
-    fun adjustContrast(value: Float) {
-        updateImageAdjustment { it.copy(contrast = value) }
-    }
-
-    fun adjustBrightness(value: Float) {
-        updateImageAdjustment { it.copy(brightness = value) }
-    }
-
-    fun adjustSaturation(value: Float) {
-        updateImageAdjustment { it.copy(saturation = value) }
-    }
-
-    fun adjustTemperature(value: Float) {
-        updateImageAdjustment { it.copy(temperature = value) }
-    }
-
-    fun adjustExposure(value: Float) {
-        updateImageAdjustment { it.copy(exposure = value) }
-    }
-
-    fun addGrain(value: Float) {
-        updateImageAdjustment { it.copy(grain = value) }
-    }
-
-    fun addChromaticAberration(value: Float) {
-        updateImageAdjustment { it.copy(chromaticAberration = value) }
-    }
+    fun adjustContrast(value: Float) = updateImageAdjustment { it.copy(contrast = value) }
+    fun adjustShadows(value: Float) = updateImageAdjustment { it.copy(shadows = value) }
+    fun adjustHighlights(value: Float) = updateImageAdjustment { it.copy(highlights = value) }
+    fun adjustSaturation(value: Float) = updateImageAdjustment { it.copy(saturation = value) }
+    fun adjustTemperature(value: Float) = updateImageAdjustment { it.copy(temperature = value) }
+    fun adjustExposure(value: Float) = updateImageAdjustment { it.copy(exposure = value) }
+    fun addGrain(value: Float) = updateImageAdjustment { it.copy(grain = value) }
+    fun addChromaticAberration(value: Float) = updateImageAdjustment { it.copy(chromaticAberration = value) }
+    fun adjustLutIntensity(value: Float) = updateImageAdjustment { it.copy(lutIntensity = value) }
 
     private fun updateImageAdjustment(update: (ImageAdjustments) -> ImageAdjustments) {
-        if (getPlatform().name == PlatformName.ANDROID && getAndroidSdkVersion() < 33) return
-        _currentAdjustments.value = update(_currentAdjustments.value)
-        updateUiState { it.copy(imageAdjustments = _currentAdjustments.value) }
+        currentAdjustments = update(currentAdjustments)
+        updateUiState { it.copy(imageAdjustments = currentAdjustments) }
+        requestPreview()
     }
 
     fun selectFilmLut(filmLut: FilmLut) {
-        _originalImage.value?.let { image ->
-            screenModelScope.launch {
-                try {
-                    updateUiState {
-                        it.copy(
-                            isLoading = true,
-                            loadingMessage = "Applying Film LUT..."
-                        )
-                    }
-                    withContext(Dispatchers.IO) {
-                        repository.applyFilmLut(
-                            scope = screenModelScope,
-                            filmLut = filmLut,
-                            image = image,
-                            onComplete = { resultImage ->
-                                screenModelScope.launch { _editedImage.emit(resultImage) }
-                                updateUiState { it.copy(selectedFilm = filmLut) }
-                                emitImage(resultImage)
-                            },
-                            onError = { error ->
-                                updateUiState { it.copy(userMessage = "Error applying LUT: $error") }
-                            })
-                    }
-                } catch (e: Exception) {
-                    updateUiState { it.copy(userMessage = "Error applying LUT: ${e.message}") }
-                } finally {
-                    updateUiState { it.copy(isLoading = false, showBottomSheet = BottomSheetState.COLLAPSED) }
+        screenModelScope.launch {
+            try {
+                updateUiState { it.copy(isLoading = true, loadingMessage = "Loading Film LUT...") }
+                val lutBytes = withContext(Dispatchers.IO) { repository.getLutBytes(filmLut) }
+                if (lutBytes == null) {
+                    updateUiState { it.copy(userMessage = "Error loading LUT.") }
+                    return@launch
                 }
+                currentLutBytes = lutBytes
+                updateUiState { it.copy(selectedFilm = filmLut) }
+                requestPreview()
+            } catch (e: Exception) {
+                updateUiState { it.copy(userMessage = "Error applying LUT: ${e.message}") }
+            } finally {
+                updateUiState { it.copy(isLoading = false, showBottomSheet = BottomSheetState.COLLAPSED) }
             }
         }
     }
 
 
     fun generateThumbnailsForGroup(category: String) {
-        // Cancel previous job if exists
         currentThumbnailJob?.cancel()
 
-        _originalImage.value?.let { originalImage ->
-            currentThumbnailJob = screenModelScope.launch {
-                try {
-                    // Create thumbnails directory if it doesn't exist
-                    createDirectory(THUMBNAILS_DIR)
+        if (sourceBytes == null) return
+        currentThumbnailJob = screenModelScope.launch {
+            try {
+                createDirectory(THUMBNAILS_DIR)
 
-                    val films = repository.getFilms(false).filter { it.category == category }
-                    val thumbnails = _uiState.value.filmThumbnails.toMutableMap()
+                val films = repository.getFilms(false).filter { it.category == category }
+                val thumbnails = _uiState.value.filmThumbnails.toMutableMap()
 
-                    for (film in films) {
-                        // Skip if thumbnail already exists
-                        if (thumbnails.containsKey(film.lut_name) || !isActive) continue
+                for (film in films) {
+                    if (thumbnails.containsKey(film.lut_name) || !isActive) continue
 
-                        // Generate thumbnail
-                        val thumbnailPath = repository.generateLutThumbnail(film, originalImage)
-                        thumbnails[film.lut_name] = thumbnailPath
-                        updateUiState { it.copy(filmThumbnails = thumbnails.toMap()) }
-                    }
-
+                    val thumbnailPath = repository.generateLutThumbnail(film, IMAGE_FILE_NAME)
+                    thumbnails[film.lut_name] = thumbnailPath
                     updateUiState { it.copy(filmThumbnails = thumbnails.toMap()) }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                } finally {
-                    updateUiState { it.copy(isLoading = false) }
                 }
+
+                updateUiState { it.copy(filmThumbnails = thumbnails.toMap()) }
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+            } finally {
+                updateUiState { it.copy(isLoading = false) }
             }
         }
     }
 
     private fun generateFilmThumbnails() {
-        _originalImage.value?.let { originalImage ->
-            screenModelScope.launch {
-                try {
-                    // Create thumbnails directory if it doesn't exist
-                    createDirectory(THUMBNAILS_DIR)
+        if (sourceBytes == null) return
+        screenModelScope.launch {
+            try {
+                createDirectory(THUMBNAILS_DIR)
 
-                    // Generate thumbnails only for favorite films initially
-                    val favoriteFilms = repository.getFavoriteFilms()
-                    val favoriteLutNames = favoriteFilms.map { it.name }
-                    val filmsToProcess = repository.getFilms(false)
-                        .filter { favoriteLutNames.contains(it.name) }
+                val favoriteFilms = repository.getFavoriteFilms()
+                val favoriteLutNames = favoriteFilms.map { it.name }
+                val filmsToProcess = repository.getFilms(false)
+                    .filter { favoriteLutNames.contains(it.name) }
 
-                    val thumbnails = mutableMapOf<String, String>()
+                val thumbnails = mutableMapOf<String, String>()
 
-                    for (film in filmsToProcess) {
-                        val thumbnailPath = repository.generateLutThumbnail(film, originalImage)
-                        thumbnails[film.lut_name] = thumbnailPath
-                    }
-
-                    updateUiState { it.copy(filmThumbnails = thumbnails.toMap()) }
-                } catch (e: Exception) {
-                    updateUiState { it.copy(userMessage = "Error generating thumbnails: ${e.message}") }
+                for (film in filmsToProcess) {
+                    val thumbnailPath = repository.generateLutThumbnail(film, IMAGE_FILE_NAME)
+                    thumbnails[film.lut_name] = thumbnailPath
                 }
+
+                updateUiState { it.copy(filmThumbnails = thumbnails.toMap()) }
+            } catch (e: Exception) {
+                updateUiState { it.copy(userMessage = "Error generating thumbnails: ${e.message}") }
             }
         }
     }
@@ -299,28 +294,26 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
             }
             screenModelScope.launch {
                 saveImageFile(IMAGE_FILE_NAME, platformFile.readBytes())
-                saveImageFile(EDITED_IMAGE_FILE_NAME, platformFile.readBytes())
                 if (arrayOf("heic", "heif").contains(platformFile.extension.lowercase())) {
                     convertImageToJpeg(IMAGE_FILE_NAME)
                 }
                 fixImageOrientation(image = IMAGE_FILE_NAME)
-                _originalImage.emit(IMAGE_FILE_NAME)
-                _editedImage.emit(IMAGE_FILE_NAME)
 
-                // Reset adjustments when new image is loaded
-                _currentAdjustments.emit(ImageAdjustments())
-                updateUiState { it.copy(imageAdjustments = ImageAdjustments()) }
+                val bytes = withContext(Dispatchers.IO) { readImageFile(IMAGE_FILE_NAME) }
+                sourceBytes = bytes
+                processor.clearCache()
 
-                emitImage(IMAGE_FILE_NAME)
+                // Reset everything that was tied to the previous image.
+                currentAdjustments = ImageAdjustments()
+                updateUiState {
+                    it.copy(
+                        imageAdjustments = ImageAdjustments(),
+                        filmThumbnails = emptyMap(),
+                    )
+                }
 
-                // Clear existing thumbnails when a new image is loaded
-                updateUiState { it.copy(filmThumbnails = emptyMap()) }
-
-                // Generate thumbnails only for favorites initially
                 generateFilmThumbnails()
-
-                // Apply selected film if available
-                _uiState.value.selectedFilm?.let { selectFilmLut(it) }
+                requestPreview()
             }
         }
     }
@@ -333,78 +326,64 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
         updateUiState { it.copy(showBottomSheet = BottomSheetState.HIDDEN) }
     }
 
-    @OptIn(ExperimentalTime::class)
-    private fun emitImage(image: String) {
-        updateUiState { it.copy(image = "$image?${kotlin.time.Clock.System.now().epochSeconds}") }
-    }
-
     fun snackbarMessageShown() {
         updateUiState { it.copy(userMessage = null) }
     }
 
     fun showOriginalImage(show: Boolean) {
-        updateUiState { it.copy(showAdjustments = !show)}
-        screenModelScope.launch {
-            val targetImage = if (show) _originalImage.value else _editedImage.value
-            targetImage?.let { emitImage(targetImage) }
-        }
+        updateUiState { it.copy(showAdjustments = !show) }
+        requestPreview()
     }
 
     fun resetImage() {
-        _originalImage.value?.let { originalImage ->
-            updateUiState { it.copy(selectedFilm = null) }
-            // Reset all adjustments
-            _currentAdjustments.value = ImageAdjustments()
-            updateUiState { it.copy(imageAdjustments = ImageAdjustments()) }
-            emitImage(originalImage)
+        currentAdjustments = ImageAdjustments()
+        currentLutBytes = null
+        updateUiState {
+            it.copy(
+                selectedFilm = null,
+                imageAdjustments = ImageAdjustments(),
+            )
         }
+        requestPreview()
     }
 
     fun exportImage() {
-        _editedImage.value?.let { imagePath ->
-            screenModelScope.launch {
-                try {
-                    updateUiState {
-                        it.copy(
-                            isLoading = true,
-                            loadingMessage = "Processing image with effects..."
-                        )
-                    }
-
-                    updateUiState { it.copy(loadingMessage = "Exporting...") }
-
-                    // Load the source bitmap
-                    val bytes = withContext(Dispatchers.IO) {
-                        readImageFile(EDITED_IMAGE_FILE_NAME)
-                    }
-
-                    // Convert bytes to ImageBitmap
-                    val sourceBitmap = bytes.decodeToImageBitmap()
-                    // Apply all adjustments and save directly
-                    val success = shaderExporter.applyAdjustmentsAndSave(
-                        sourceBitmap = sourceBitmap,
-                        outputPath = EDITED_IMAGE_FILE_NAME,
-                        adjustments = _currentAdjustments.value,
-                        quality = settingsRepository.getSettings().exportQuality
+        val bytes = sourceBytes ?: run {
+            updateUiState { it.copy(userMessage = "Please choose an image first.") }
+            return
+        }
+        screenModelScope.launch {
+            try {
+                updateUiState {
+                    it.copy(
+                        isLoading = true,
+                        loadingMessage = "Processing image with effects...",
                     )
-
-                    if (!success) {
-                        throw Exception("Failed to save processed image")
-                    }
-
-                    updateUiState { it.copy(loadingMessage = "Saving to gallery...") }
-
-                    // Now save to gallery
-                    saveImageToGallery(EDITED_IMAGE_FILE_NAME, appContext = AppContext)
-
-                    updateUiState { it.copy(userMessage = "Image exported successfully with all effects applied.") }
-                } catch (e: Exception) {
-                    updateUiState { it.copy(userMessage = "Error exporting image: ${e.message}") }
-                } finally {
-                    updateUiState { it.copy(isLoading = false) }
                 }
+
+                val exportedBytes = processor.process(
+                    imageBytes = bytes,
+                    lutBytes = currentLutBytes,
+                    adjustments = currentAdjustments,
+                    maxDimension = null,
+                    quality = settingsRepository.getSettings().exportQuality,
+                    grainSeed = (kotlin.random.Random.nextFloat() * 1000f),
+                ) ?: throw IllegalStateException("Failed to process image")
+
+                withContext(Dispatchers.IO) {
+                    saveImageFile(EDITED_IMAGE_FILE_NAME, exportedBytes)
+                }
+
+                updateUiState { it.copy(loadingMessage = "Saving to gallery...") }
+                saveImageToGallery(EDITED_IMAGE_FILE_NAME, appContext = AppContext)
+
+                updateUiState { it.copy(userMessage = "Image exported successfully with all effects applied.") }
+            } catch (e: Exception) {
+                updateUiState { it.copy(userMessage = "Error exporting image: ${e.message}") }
+            } finally {
+                updateUiState { it.copy(isLoading = false) }
             }
-        } ?: updateUiState { it.copy(userMessage = "Please choose an image first.") }
+        }
     }
 
     fun addFavoriteFilm(filmLut: FilmLut) {
@@ -432,6 +411,49 @@ data class HomeScreenModel(val repository: FilmRepository, val settingsRepositor
     private fun addSettingsListeners() {
         settingsRepository.getSettings().defaultPickerListener { defaultPicker ->
             updateUiState { it.copy(defaultPickerType = defaultPicker) }
+        }
+    }
+
+    private fun requestPreview() {
+        val source = sourceBytes ?: return
+        previewTrigger.value = PreviewRequest(
+            sourceKey = source.contentHashCode(),
+            lutKey = currentLutBytes?.contentHashCode() ?: 0,
+            adjustments = currentAdjustments,
+            showOriginal = !_uiState.value.showAdjustments,
+        )
+    }
+
+    @OptIn(FlowPreview::class)
+    private fun startPreviewLoop() {
+        screenModelScope.launch {
+            previewTrigger
+                .filterNotNull()
+                .debounce(PREVIEW_DEBOUNCE_MS)
+                .collectLatest { request ->
+                    val source = sourceBytes ?: return@collectLatest
+                    val bytes = withContext(Dispatchers.Default) {
+                        if (request.showOriginal) {
+                            processor.process(
+                                imageBytes = source,
+                                lutBytes = null,
+                                adjustments = ImageAdjustments(),
+                                maxDimension = SkiaImageProcessor.PREVIEW_MAX_DIMENSION,
+                                quality = PREVIEW_QUALITY,
+                            )
+                        } else {
+                            processor.process(
+                                imageBytes = source,
+                                lutBytes = currentLutBytes,
+                                adjustments = currentAdjustments,
+                                maxDimension = SkiaImageProcessor.PREVIEW_MAX_DIMENSION,
+                                quality = PREVIEW_QUALITY,
+                            )
+                        }
+                    } ?: return@collectLatest
+                    val token = ++previewVersion
+                    updateUiState { it.copy(previewImage = bytes, previewToken = token) }
+                }
         }
     }
 }
