@@ -33,7 +33,7 @@ internal object ImageProcessingShader {
         // Tonal — all pre-normalized by the caller.
         uniform float exposure;      // stops; ~[-2, 2]
         uniform float contrast;      // multiplier offset; ~[-1, 1] (negative = flatter)
-        uniform float shadows;       // lifts (positive) / crushes (negative) shadow tones; ~[-0.5, 0.5]
+        uniform float shadows;       // lifts (positive) / crushes (negative) shadow tones; ~[-0.25, 0.25]
         uniform float highlights;    // boosts (positive) / pulls down (negative) highlights; ~[-0.5, 0.5]
         uniform float saturation;    // ~[-1, 1]
         uniform float temperature;   // ~[-1, 1] (warm positive, cool negative)
@@ -173,7 +173,7 @@ internal object ImageProcessingShader {
                     half(1.0)
                 );
                 if (shadows != 0.0) {
-                    half mask = pow(half(1.0) - lumaTone, half(2.2));
+                    half mask = smoothstep(half(0.5), half(0.0), lumaTone);
                     lin += half3(half(shadows)) * mask;
                 }
                 if (highlights != 0.0) {

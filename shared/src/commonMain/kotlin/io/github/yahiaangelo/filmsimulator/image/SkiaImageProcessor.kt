@@ -90,7 +90,7 @@ class SkiaImageProcessor {
             // earlier shader; keep the same feel by dividing similarly.
             uniform("exposure", (adjustments.exposure / 10f).coerceIn(-2f, 2f))
             uniform("contrast", (adjustments.contrast / 20f).coerceIn(-1f, 1f))
-            uniform("shadows", (adjustments.shadows / 40f).coerceIn(-0.5f, 0.5f))
+            uniform("shadows", (adjustments.shadows / 80f).coerceIn(-0.25f, 0.25f))
             uniform("highlights", (adjustments.highlights / 40f).coerceIn(-0.5f, 0.5f))
             uniform("saturation", (adjustments.saturation / 20f).coerceIn(-1f, 1f))
             uniform("temperature", (adjustments.temperature / 20f).coerceIn(-1f, 1f))
