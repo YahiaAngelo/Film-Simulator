@@ -2,10 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<key>NSCameraUsageDescription</key>
-	<string>Allow this app to capture an image to edit it&apos;s style</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -23,11 +19,15 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.5.1</string>
+	<string>1.6.0</string>
 	<key>CFBundleVersion</key>
-	<string>16</string>
+	<string>17</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Allow this app to capture an image to edit it's style</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Allow the app to export the image to your Gallery</string>
 	<key>NSPhotoLibraryUsageDescription</key>
