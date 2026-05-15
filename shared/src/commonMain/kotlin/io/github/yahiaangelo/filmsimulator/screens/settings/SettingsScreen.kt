@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.core.screen.uniqueScreenKey
-import cafe.adriel.voyager.koin.getScreenModel
+import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import film_simulator.shared.generated.resources.Res
@@ -88,7 +88,7 @@ class SettingsScreen : Screen {
         val snackbarHostState = remember { SnackbarHostState() }
         val showDefaultPickerDialog = remember { mutableStateOf(false) }
         val showExportFormatDialog = remember { mutableStateOf(false) }
-        val vm = getScreenModel<SettingsScreenModel>()
+        val vm = koinScreenModel<SettingsScreenModel>()
         val uiState by vm.uiState.collectAsState()
 
         val lutDownloadManager = remember { getKoin().get<LutDownloadManager>() }
@@ -135,8 +135,8 @@ class SettingsScreen : Screen {
                 SettingsSlider(
                     name = stringResource(Res.string.image_export_quality),
                     value = uiState.exportQuality.toFloat(),
-                    steps = 4,
-                    range = 25f..100f,
+                    steps = 8,
+                    range = 10f..100f,
                     onValueChange = vm::updateExportQualitySettings
                 )
                 Spacer(modifier = Modifier.padding(16.dp))

@@ -82,12 +82,11 @@ import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.core.screen.ScreenKey
 import cafe.adriel.voyager.core.screen.uniqueScreenKey
-import cafe.adriel.voyager.koin.getScreenModel
+import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
-import coil3.compose.SubcomposeAsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -152,7 +151,7 @@ data class HomeScreen(
         val navigator = LocalNavigator.currentOrThrow
         val snackbarHostState = remember { SnackbarHostState() }
 
-        val vm = getScreenModel<HomeScreenModel>()
+        val vm = koinScreenModel<HomeScreenModel>()
         val uiState by vm.uiState.collectAsState()
 
         val singleImagePicker = rememberFilePickerLauncher(
