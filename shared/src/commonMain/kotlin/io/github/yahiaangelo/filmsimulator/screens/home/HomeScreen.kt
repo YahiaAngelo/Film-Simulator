@@ -80,6 +80,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.core.screen.ScreenKey
+import cafe.adriel.voyager.core.screen.uniqueScreenKey
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -135,6 +137,11 @@ import util.systemTemporaryPath
 data class HomeScreen(
     val userMessage: String = ""
 ) : Screen {
+
+    // Workaround for voyager#546: without a unique key the AndroidScreenLifecycleOwner
+    // is reused across activity restarts and gets disposed mid-flight, causing the
+    // empty-LUTs UI and the "DESTROYED cannot be moved to STARTED" crash.
+    override val key: ScreenKey = uniqueScreenKey
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable

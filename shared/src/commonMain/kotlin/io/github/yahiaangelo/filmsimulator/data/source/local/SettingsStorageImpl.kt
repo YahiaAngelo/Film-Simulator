@@ -9,6 +9,7 @@ import com.russhwolf.settings.set
 import io.github.yahiaangelo.filmsimulator.PlatformName
 import io.github.yahiaangelo.filmsimulator.getPlatform
 import io.github.yahiaangelo.filmsimulator.screens.settings.DefaultPickerType
+import io.github.yahiaangelo.filmsimulator.screens.settings.ExportFormat
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
@@ -36,6 +37,14 @@ class SettingsStorageImpl : SettingsStorage {
         get() = observableSettings[StorageKeys.EXPORT_QUALITY.key] ?: 90
         set(value) {
             observableSettings[StorageKeys.EXPORT_QUALITY.key] = value
+        }
+
+    override var exportFormat: ExportFormat
+        get() = ExportFormat.valueOf(
+            observableSettings[StorageKeys.EXPORT_FORMAT.key] ?: ExportFormat.JPEG.name
+        )
+        set(value) {
+            observableSettings[StorageKeys.EXPORT_FORMAT.key] = value.name
         }
     override var defaultPicker: DefaultPickerType
         get() = DefaultPickerType.valueOf(
