@@ -85,13 +85,15 @@ import cafe.adriel.voyager.core.screen.uniqueScreenKey
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import androidx.compose.ui.graphics.decodeToImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.github.panpf.zoomimage.CoilZoomAsyncImage
-import com.github.panpf.zoomimage.rememberCoilZoomState
+import com.github.panpf.zoomimage.ZoomImage
+import com.github.panpf.zoomimage.compose.rememberZoomState
 
 import film_simulator.shared.generated.resources.Res
 import film_simulator.shared.generated.resources.film
@@ -255,7 +257,7 @@ data class HomeScreen(
         state: HomeUiState,
         modifier: Modifier = Modifier
     ) {
-        val zoomState = rememberCoilZoomState()
+        val zoomState = rememberZoomState()
         Column(modifier = modifier.padding(horizontal = 18.dp)) {
             Spacer(modifier = Modifier.size(23.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
@@ -271,19 +273,15 @@ data class HomeScreen(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         state.previewImage?.let { bytes ->
-                            val cacheKey = "preview-${state.previewToken}"
-                            CoilZoomAsyncImage(
+                            val painter = remember(bytes) {
+                                BitmapPainter(bytes.decodeToImageBitmap())
+                            }
+                            ZoomImage(
                                 modifier = Modifier.fillMaxSize(),
                                 zoomState = zoomState,
-                                model = ImageRequest.Builder(LocalPlatformContext.current)
-                                    .data(bytes)
-                                    .memoryCacheKey(cacheKey)
-                                    .diskCacheKey(cacheKey)
-                                    .memoryCachePolicy(CachePolicy.DISABLED)
-                                    .diskCachePolicy(CachePolicy.DISABLED)
-                                    .build(),
+                                painter = painter,
                                 contentDescription = null,
-                                scrollBar = null
+                                scrollBar = null,
                             )
                         } ?: IconButton(
                             modifier = Modifier.align(Alignment.Center).size(150.dp),
