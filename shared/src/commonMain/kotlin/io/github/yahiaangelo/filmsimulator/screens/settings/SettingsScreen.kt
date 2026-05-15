@@ -42,6 +42,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.core.screen.ScreenKey
+import cafe.adriel.voyager.core.screen.uniqueScreenKey
 import cafe.adriel.voyager.koin.getScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -50,6 +52,11 @@ import film_simulator.shared.generated.resources.app_version
 import film_simulator.shared.generated.resources.contact
 import film_simulator.shared.generated.resources.default_picker
 import film_simulator.shared.generated.resources.developer
+import film_simulator.shared.generated.resources.export_format
+import film_simulator.shared.generated.resources.export_format_jpeg
+import film_simulator.shared.generated.resources.export_format_original
+import film_simulator.shared.generated.resources.export_format_summary_jpeg
+import film_simulator.shared.generated.resources.export_format_summary_original
 import film_simulator.shared.generated.resources.files
 import film_simulator.shared.generated.resources.image_export_quality
 import film_simulator.shared.generated.resources.images
@@ -70,6 +77,9 @@ import sh.calvin.autolinktext.rememberAutoLinkText
 
 class SettingsScreen : Screen {
 
+    // See HomeScreen — workaround for voyager#546.
+    override val key: ScreenKey = uniqueScreenKey
+
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
     @Composable
     override fun Content() {
@@ -77,6 +87,7 @@ class SettingsScreen : Screen {
         val scaffoldState = rememberScaffoldState()
         val snackbarHostState = remember { SnackbarHostState() }
         val showDefaultPickerDialog = remember { mutableStateOf(false) }
+        val showExportFormatDialog = remember { mutableStateOf(false) }
         val vm = getScreenModel<SettingsScreenModel>()
         val uiState by vm.uiState.collectAsState()
 
@@ -129,6 +140,23 @@ class SettingsScreen : Screen {
                     onValueChange = vm::updateExportQualitySettings
                 )
                 Spacer(modifier = Modifier.padding(16.dp))
+                ListItem(
+                    modifier = Modifier.clickable {
+                        showExportFormatDialog.value = true
+                    },
+                    text = {
+                        Text(
+                            text = stringResource(Res.string.export_format),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    },
+                    secondaryText = {
+                        Text(
+                            text = stringResource(uiState.exportFormat.getString()),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    },
+                )
                 ListItem(
                     modifier = Modifier.clickable {
                         showDefaultPickerDialog.value = true
@@ -201,6 +229,85 @@ class SettingsScreen : Screen {
 
         DefaultPickerDialog(showDefaultPickerDialog.value, onItemClick = vm::updateDefaultPickerSettings) {
             showDefaultPickerDialog.value = false
+        }
+
+        ExportFormatDialog(showExportFormatDialog.value, onItemClick = vm::updateExportFormatSettings) {
+            showExportFormatDialog.value = false
+        }
+    }
+
+    @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
+    @Composable
+    fun ExportFormatDialog(
+        show: Boolean,
+        onItemClick: (ExportFormat) -> Unit,
+        onDismiss: () -> Unit
+    ) {
+        if (show) {
+            BasicAlertDialog(
+                onDismissRequest = onDismiss
+            ) {
+                Surface(
+                    modifier = Modifier.wrapContentWidth().wrapContentHeight(),
+                    shape = MaterialTheme.shapes.large,
+                    tonalElevation = AlertDialogDefaults.TonalElevation
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = stringResource(Res.string.export_format),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        ListItem(
+                            text = {
+                                Text(
+                                    text = stringResource(Res.string.export_format_jpeg),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            },
+                            secondaryText = {
+                                Text(
+                                    text = stringResource(Res.string.export_format_summary_jpeg),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                onItemClick(ExportFormat.JPEG)
+                                onDismiss()
+                            }
+                        )
+                        ListItem(
+                            text = {
+                                Text(
+                                    text = stringResource(Res.string.export_format_original),
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            },
+                            secondaryText = {
+                                Text(
+                                    text = stringResource(Res.string.export_format_summary_original),
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                onItemClick(ExportFormat.ORIGINAL)
+                                onDismiss()
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        TextButton(
+                            modifier = Modifier.align(Alignment.End),
+                            onClick = onDismiss
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.cancel),
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
