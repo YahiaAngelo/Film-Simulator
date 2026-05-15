@@ -128,7 +128,9 @@ import io.github.yahiaangelo.filmsimulator.view.LutDownloadDialog
 import io.github.yahiaangelo.filmsimulator.view.LutDownloadProgressDialog
 import io.github.yahiaangelo.filmsimulator.view.ProgressDialog
 import io.github.yahiaangelo.filmsimulator.view.SettingsSlider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import util.THUMBNAILS_DIR
@@ -273,16 +275,23 @@ data class HomeScreen(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         state.previewImage?.let { bytes ->
-                            val painter = remember(bytes) {
-                                BitmapPainter(bytes.decodeToImageBitmap())
+                            // Decode off the main thread; keep the previous painter visible
+                            // until the new one is ready so the toggle/preview swap stays smooth.
+                            var painter by remember { mutableStateOf<BitmapPainter?>(null) }
+                            LaunchedEffect(bytes) {
+                                painter = withContext(Dispatchers.Default) {
+                                    BitmapPainter(bytes.decodeToImageBitmap())
+                                }
                             }
-                            ZoomImage(
-                                modifier = Modifier.fillMaxSize(),
-                                zoomState = zoomState,
-                                painter = painter,
-                                contentDescription = null,
-                                scrollBar = null,
-                            )
+                            painter?.let { p ->
+                                ZoomImage(
+                                    modifier = Modifier.fillMaxSize(),
+                                    zoomState = zoomState,
+                                    painter = p,
+                                    contentDescription = null,
+                                    scrollBar = null,
+                                )
+                            }
                         } ?: IconButton(
                             modifier = Modifier.align(Alignment.Center).size(150.dp),
                             onClick = state.onImageChooseClick
