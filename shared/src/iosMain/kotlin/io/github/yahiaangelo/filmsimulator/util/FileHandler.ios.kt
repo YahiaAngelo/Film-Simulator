@@ -2,7 +2,6 @@ package util
 
 import io.github.yahiaangelo.filmsimulator.screens.settings.ExportFormat
 import io.github.yahiaangelo.filmsimulator.util.AppContext
-import io.github.yahiaangelo.filmsimulator.util.toUIImage
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.IntVar
@@ -24,6 +23,8 @@ import platform.CoreFoundation.CFRelease
 import platform.CoreFoundation.CFURLRef
 import platform.CoreFoundation.kCFNumberIntType
 import platform.Foundation.CFBridgingRetain
+import platform.Foundation.NSDate
+import platform.Foundation.NSMutableArray
 import platform.Foundation.NSURL
 import platform.Foundation.NSUUID
 import platform.Foundation.NSTemporaryDirectory
@@ -34,11 +35,17 @@ import platform.ImageIO.CGImageSourceCopyPropertiesAtIndex
 import platform.ImageIO.CGImageSourceCreateWithURL
 import platform.ImageIO.CGImageSourceGetType
 import platform.ImageIO.kCGImagePropertyOrientation
+import platform.Photos.PHAssetCollection
+import platform.Photos.PHAssetCollectionChangeRequest
+import platform.Photos.PHAssetCollectionSubtypeAlbumRegular
+import platform.Photos.PHAssetCollectionTypeAlbum
 import platform.Photos.PHAssetCreationRequest
 import platform.Photos.PHAssetResourceTypePhoto
+import platform.Photos.PHObjectPlaceholder
 import platform.Photos.PHPhotoLibrary
-import platform.UIKit.UIImageWriteToSavedPhotosAlbum
 import kotlin.coroutines.resume
+
+private const val ALBUM_TITLE = "Film Simulator"
 
 actual val systemTemporaryPath = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
 actual fun saveImageFile(fileName: String, image: ByteArray) {
@@ -87,8 +94,13 @@ actual suspend fun saveImageToGallery(
         // Fall through to plain JPEG path on failure.
     }
 
-    val uiImage = readImageFile(image).toUIImage()!!
-    UIImageWriteToSavedPhotosAlbum(uiImage, null, null, null)
+    // Plain path: import the already-encoded processed JPEG straight into the
+    // app album via PhotoKit. Going through PhotoKit (rather than the older
+    // UIImageWriteToSavedPhotosAlbum) is what lets us place the asset inside a
+    // named album rather than dumping it into the camera roll.
+    val processedPath = "${systemTemporaryPath / image}"
+    val processedUrl = NSURL.fileURLWithPath(processedPath)
+    saveAssetToAppAlbum(processedUrl)
 }
 
 /**
@@ -160,6 +172,10 @@ private suspend fun saveImageWithOriginalFormatAndMetadata(
         if (!ok) return@withContext false
 
         suspendCancellableCoroutine<Boolean> { continuation ->
+            // Look up the album outside performChanges — the fetch is a read and
+            // performChanges is the write transaction. Inside the block we either
+            // mutate the existing album or create a new one.
+            val existingAlbum = findAppAlbum()
             PHPhotoLibrary.sharedPhotoLibrary().performChanges({
                 val request = PHAssetCreationRequest.creationRequestForAsset()
                 request.addResourceWithType(
@@ -167,6 +183,12 @@ private suspend fun saveImageWithOriginalFormatAndMetadata(
                     tmpUrl,
                     null,
                 )
+                // EXIF DateTimeOriginal stays intact inside the file (archival
+                // metadata) — but the PHAsset's creationDate is what Photos.app
+                // uses for sorting, so we set it to "now" so exports surface at
+                // the top of Recents and the app album.
+                request.setCreationDate(NSDate())
+                addAssetToAppAlbum(request.placeholderForCreatedAsset(), existingAlbum)
             }, completionHandler = { success, _ ->
                 runCatching { FileSystem.SYSTEM.delete(tmpPath.toPath()) }
                 destinationTmpPath = null
@@ -179,6 +201,64 @@ private suspend fun saveImageWithOriginalFormatAndMetadata(
         if (mergedProps != null) CFRelease(mergedProps)
         destinationTmpPath?.let { runCatching { FileSystem.SYSTEM.delete(it.toPath()) } }
     }
+}
+
+/**
+ * Save a file at [fileUrl] as a new asset in the app's Photos album,
+ * creating the album if it doesn't exist yet.
+ */
+@OptIn(ExperimentalForeignApi::class)
+private suspend fun saveAssetToAppAlbum(fileUrl: NSURL): Boolean =
+    suspendCancellableCoroutine { continuation ->
+        val existingAlbum = findAppAlbum()
+        PHPhotoLibrary.sharedPhotoLibrary().performChanges({
+            val request = PHAssetCreationRequest.creationRequestForAsset()
+            request.addResourceWithType(PHAssetResourceTypePhoto, fileUrl, null)
+            // Stamp the asset's sort-time as "now" so the export lands at the
+            // top of Recents; the embedded EXIF capture date is left untouched.
+            request.setCreationDate(NSDate())
+            addAssetToAppAlbum(request.placeholderForCreatedAsset(), existingAlbum)
+        }, completionHandler = { success, _ ->
+            continuation.resume(success)
+        })
+    }
+
+/**
+ * Inside a [PHPhotoLibrary.performChanges] block, add the just-created asset
+ * (represented by [placeholder]) to the app album. If [existingAlbum] is null
+ * a new album with [ALBUM_TITLE] is created in the same transaction.
+ */
+@OptIn(ExperimentalForeignApi::class)
+private fun addAssetToAppAlbum(
+    placeholder: PHObjectPlaceholder?,
+    existingAlbum: PHAssetCollection?,
+) {
+    if (placeholder == null) return
+    val albumRequest = if (existingAlbum != null) {
+        PHAssetCollectionChangeRequest.changeRequestForAssetCollection(existingAlbum)
+    } else {
+        PHAssetCollectionChangeRequest.creationRequestForAssetCollectionWithTitle(ALBUM_TITLE)
+    }
+    // PHAssetCollectionChangeRequest.addAssets expects an NSFastEnumeration —
+    // NSMutableArray adopts it. We wrap the single placeholder so the call works
+    // for the common one-asset-at-a-time export flow.
+    val assets = NSMutableArray()
+    assets.addObject(placeholder)
+    albumRequest?.addAssets(assets)
+}
+
+private fun findAppAlbum(): PHAssetCollection? {
+    val result = PHAssetCollection.fetchAssetCollectionsWithType(
+        PHAssetCollectionTypeAlbum,
+        PHAssetCollectionSubtypeAlbumRegular,
+        null,
+    )
+    val count = result.count.toInt()
+    for (i in 0 until count) {
+        val collection = result.objectAtIndex(i.toULong()) as? PHAssetCollection
+        if (collection?.localizedTitle == ALBUM_TITLE) return collection
+    }
+    return null
 }
 
 private fun extensionForExtension(srcExt: String): String = when (srcExt) {

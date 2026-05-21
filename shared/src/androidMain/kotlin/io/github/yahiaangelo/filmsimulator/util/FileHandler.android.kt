@@ -70,10 +70,15 @@ actual suspend fun saveImageToGallery(
     }
     val (compressFormat, mimeType, fileExt) = resolveEncoding(targetExt)
 
+    val now = System.currentTimeMillis()
     val contentValues = ContentValues().apply {
-        put(MediaStore.MediaColumns.DISPLAY_NAME, "image_${System.currentTimeMillis()}.$fileExt")
+        put(MediaStore.MediaColumns.DISPLAY_NAME, "image_$now.$fileExt")
         put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+        put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DCIM}/FilmSimulator")
+        // Override the gallery's sort-time so the export shows up at the top of
+        // the timeline. The EXIF DateTimeOriginal (true capture moment) is still
+        // preserved inside the file for archival purposes — see copyExif.
+        put(MediaStore.MediaColumns.DATE_TAKEN, now)
     }
 
     val resolver = context.contentResolver
@@ -138,8 +143,11 @@ private fun resolveEncoding(srcExt: String): Encoding = when (srcExt) {
 private fun copyExif(sourcePath: String, destPath: String) {
     val src = ExifInterface(sourcePath)
     val dst = ExifInterface(destPath)
+    // TAG_DATETIME / TAG_SUBSEC_TIME represent the file's last-modified time, not
+    // the moment the shutter fired — we intentionally let those default to "now"
+    // so the export reads as freshly modified, while DATETIME_ORIGINAL /
+    // DATETIME_DIGITIZED preserve the actual capture moment for archival.
     val tagsToCopy = arrayOf(
-        ExifInterface.TAG_DATETIME,
         ExifInterface.TAG_DATETIME_ORIGINAL,
         ExifInterface.TAG_DATETIME_DIGITIZED,
         ExifInterface.TAG_MAKE,
@@ -159,7 +167,6 @@ private fun copyExif(sourcePath: String, destPath: String) {
         ExifInterface.TAG_GPS_TIMESTAMP,
         ExifInterface.TAG_GPS_DATESTAMP,
         ExifInterface.TAG_GPS_PROCESSING_METHOD,
-        ExifInterface.TAG_SUBSEC_TIME,
         ExifInterface.TAG_SUBSEC_TIME_ORIGINAL,
         ExifInterface.TAG_SUBSEC_TIME_DIGITIZED,
     )
