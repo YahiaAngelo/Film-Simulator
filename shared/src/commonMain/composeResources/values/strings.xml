@@ -8,6 +8,11 @@
     <string name="updating_luts_list">Updating Luts list</string>
     <string name="settings">Settings</string>
     <string name="image_export_quality">Image Export Quality</string>
+    <string name="export_format">Export Format</string>
+    <string name="export_format_jpeg">JPEG</string>
+    <string name="export_format_original">Original (keep metadata)</string>
+    <string name="export_format_summary_jpeg">Always export as JPEG (no metadata preserved)</string>
+    <string name="export_format_summary_original">Export in source format with EXIF metadata</string>
     <string name="about">About</string>
     <string name="app_version">App Version</string>
     <string name="developer">Developer</string>

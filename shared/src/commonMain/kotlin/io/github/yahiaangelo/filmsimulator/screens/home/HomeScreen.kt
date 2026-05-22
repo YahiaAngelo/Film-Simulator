@@ -72,6 +72,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
@@ -79,17 +80,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
-import cafe.adriel.voyager.koin.getScreenModel
+import cafe.adriel.voyager.core.screen.ScreenKey
+import cafe.adriel.voyager.core.screen.uniqueScreenKey
+import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import androidx.compose.ui.graphics.decodeToImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
-import coil3.compose.SubcomposeAsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.github.panpf.zoomimage.CoilZoomAsyncImage
-import com.github.panpf.zoomimage.rememberCoilZoomState
+import com.github.panpf.zoomimage.ZoomImage
+import com.github.panpf.zoomimage.compose.rememberZoomState
 
 import film_simulator.shared.generated.resources.Res
 import film_simulator.shared.generated.resources.film
@@ -124,7 +128,9 @@ import io.github.yahiaangelo.filmsimulator.view.LutDownloadDialog
 import io.github.yahiaangelo.filmsimulator.view.LutDownloadProgressDialog
 import io.github.yahiaangelo.filmsimulator.view.ProgressDialog
 import io.github.yahiaangelo.filmsimulator.view.SettingsSlider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import util.THUMBNAILS_DIR
@@ -135,6 +141,11 @@ data class HomeScreen(
     val userMessage: String = ""
 ) : Screen {
 
+    // Workaround for voyager#546: without a unique key the AndroidScreenLifecycleOwner
+    // is reused across activity restarts and gets disposed mid-flight, causing the
+    // empty-LUTs UI and the "DESTROYED cannot be moved to STARTED" crash.
+    override val key: ScreenKey = uniqueScreenKey
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     override fun Content() {
@@ -144,7 +155,7 @@ data class HomeScreen(
         val navigator = LocalNavigator.currentOrThrow
         val snackbarHostState = remember { SnackbarHostState() }
 
-        val vm = getScreenModel<HomeScreenModel>()
+        val vm = koinScreenModel<HomeScreenModel>()
         val uiState by vm.uiState.collectAsState()
 
         val singleImagePicker = rememberFilePickerLauncher(
@@ -248,7 +259,7 @@ data class HomeScreen(
         state: HomeUiState,
         modifier: Modifier = Modifier
     ) {
-        val zoomState = rememberCoilZoomState()
+        val zoomState = rememberZoomState()
         Column(modifier = modifier.padding(horizontal = 18.dp)) {
             Spacer(modifier = Modifier.size(23.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
@@ -264,20 +275,23 @@ data class HomeScreen(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         state.previewImage?.let { bytes ->
-                            val cacheKey = "preview-${state.previewToken}"
-                            CoilZoomAsyncImage(
-                                modifier = Modifier.fillMaxSize(),
-                                zoomState = zoomState,
-                                model = ImageRequest.Builder(LocalPlatformContext.current)
-                                    .data(bytes)
-                                    .memoryCacheKey(cacheKey)
-                                    .diskCacheKey(cacheKey)
-                                    .memoryCachePolicy(CachePolicy.DISABLED)
-                                    .diskCachePolicy(CachePolicy.DISABLED)
-                                    .build(),
-                                contentDescription = null,
-                                scrollBar = null
-                            )
+                            // Decode off the main thread; keep the previous painter visible
+                            // until the new one is ready so the toggle/preview swap stays smooth.
+                            var painter by remember { mutableStateOf<BitmapPainter?>(null) }
+                            LaunchedEffect(bytes) {
+                                painter = withContext(Dispatchers.Default) {
+                                    BitmapPainter(bytes.decodeToImageBitmap())
+                                }
+                            }
+                            painter?.let { p ->
+                                ZoomImage(
+                                    modifier = Modifier.fillMaxSize(),
+                                    zoomState = zoomState,
+                                    painter = p,
+                                    contentDescription = null,
+                                    scrollBar = null,
+                                )
+                            }
                         } ?: IconButton(
                             modifier = Modifier.align(Alignment.Center).size(150.dp),
                             onClick = state.onImageChooseClick
@@ -421,6 +435,7 @@ data class HomeScreen(
             },
             sheetState = sheetState,
             dragHandle = {},
+            scrimColor = Color.Transparent,
         ) {
             Box(
                 modifier = Modifier

@@ -34,6 +34,7 @@ import kotlinx.coroutines.withContext
 import org.koin.dsl.module
 import util.EDITED_IMAGE_FILE_NAME
 import util.IMAGE_FILE_NAME
+import util.ORIGINAL_IMAGE_FILE_PREFIX
 import util.THUMBNAILS_DIR
 import util.createDirectory
 import util.readImageFile
@@ -47,6 +48,17 @@ val homeScreenModule = module {
 
 /** Debounce window before re-rendering the preview after a slider change. */
 private const val PREVIEW_DEBOUNCE_MS = 25L
+
+/**
+ * Source formats that the Skia pipeline can't decode at full quality on its own —
+ * they need to be transcoded to JPEG first via the platform converter. For RAW
+ * formats this also ensures we read the embedded full-size preview rather than
+ * the tiny thumbnail BitmapFactory returns by default (Pixel DNGs etc.).
+ */
+private val formatsNeedingConversion = setOf(
+    "heic", "heif",
+    "dng", "raw", "cr2", "nef", "orf", "arw", "raf", "pef", "sr2", "rw2",
+)
 
 /** JPEG quality used for the preview pipeline — lower than export to keep encode fast. */
 private const val PREVIEW_QUALITY = 80
@@ -127,6 +139,8 @@ data class HomeScreenModel(
     private var currentLutBytes: ByteArray? = null
     private var currentAdjustments: ImageAdjustments = ImageAdjustments()
     private var currentThumbnailJob: Job? = null
+    /** Filename in app cache holding the user's unmodified original picked image, with original extension. */
+    private var originalImageFileName: String? = null
 
     private data class PreviewRequest(
         val sourceKey: Int,
@@ -293,8 +307,15 @@ data class HomeScreenModel(
                 return
             }
             screenModelScope.launch {
-                saveImageFile(IMAGE_FILE_NAME, platformFile.readBytes())
-                if (arrayOf("heic", "heif").contains(platformFile.extension.lowercase())) {
+                val originalBytes = platformFile.readBytes()
+                // Stash the raw original (with original extension) so export can read its
+                // EXIF / detect format when "original format" export is selected.
+                val originalName = "$ORIGINAL_IMAGE_FILE_PREFIX.${platformFile.extension.lowercase()}"
+                saveImageFile(originalName, originalBytes)
+                originalImageFileName = originalName
+
+                saveImageFile(IMAGE_FILE_NAME, originalBytes)
+                if (formatsNeedingConversion.contains(platformFile.extension.lowercase())) {
                     convertImageToJpeg(IMAGE_FILE_NAME)
                 }
                 fixImageOrientation(image = IMAGE_FILE_NAME)
@@ -375,7 +396,12 @@ data class HomeScreenModel(
                 }
 
                 updateUiState { it.copy(loadingMessage = "Saving to gallery...") }
-                saveImageToGallery(EDITED_IMAGE_FILE_NAME, appContext = AppContext)
+                saveImageToGallery(
+                    image = EDITED_IMAGE_FILE_NAME,
+                    appContext = AppContext,
+                    format = settingsRepository.getSettings().exportFormat,
+                    originalImage = originalImageFileName,
+                )
 
                 updateUiState { it.copy(userMessage = "Image exported successfully with all effects applied.") }
             } catch (e: Exception) {
