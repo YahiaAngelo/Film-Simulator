@@ -63,8 +63,8 @@ android {
         applicationId = "io.github.yahiaangelo.filmsimulator.android"
         minSdk = 24
         targetSdk = 37
-        versionCode = 14
-        versionName = "0.6.2"
+        versionCode = 15
+        versionName = "0.6.3"
     }
     buildFeatures {
         compose = true
