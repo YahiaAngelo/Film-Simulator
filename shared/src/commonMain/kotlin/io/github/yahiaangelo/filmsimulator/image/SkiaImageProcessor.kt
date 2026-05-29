@@ -76,7 +76,7 @@ class SkiaImageProcessor {
         val effect = RuntimeEffect.makeForShader(ImageProcessingShader.SHADER)
         val builder = RuntimeShaderBuilder(effect).apply {
             uniform("useLut", if (lutImage != null) 1f else 0f)
-            uniform("lutIntensity", (adjustments.lutIntensity / 100f).coerceIn(0f, 1f))
+            uniform("lutIntensity", (adjustments.lutIntensity / 100f).coerceIn(0f, 2f))
             uniform("lutSize", (lut?.size ?: 1).toFloat())
             uniform(
                 "imageScale",
@@ -89,8 +89,8 @@ class SkiaImageProcessor {
             // surfaces -20..20 (or 0..10 for grain/CA) which is a relic of the
             // earlier shader; keep the same feel by dividing similarly.
             uniform("exposure", (adjustments.exposure / 10f).coerceIn(-2f, 2f))
-            uniform("contrast", (adjustments.contrast / 20f).coerceIn(-1f, 1f))
-            uniform("shadows", (adjustments.shadows / 80f).coerceIn(-0.25f, 0.25f))
+            uniform("contrast", (adjustments.contrast / 40f).coerceIn(-0.5f, 0.5f))
+            uniform("shadows", (adjustments.shadows / 160f).coerceIn(-0.125f, 0.125f))
             uniform("highlights", (adjustments.highlights / 40f).coerceIn(-0.5f, 0.5f))
             uniform("saturation", (adjustments.saturation / 20f).coerceIn(-1f, 1f))
             uniform("temperature", (adjustments.temperature / 20f).coerceIn(-1f, 1f))

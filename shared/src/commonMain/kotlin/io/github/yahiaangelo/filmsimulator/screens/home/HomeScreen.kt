@@ -349,8 +349,8 @@ data class HomeScreen(
                     name = "LUT Intensity",
                     value = state.imageAdjustments.lutIntensity,
                     onValueChange = state.onLutIntensityChange,
-                    range = 0f..100f,
-                    steps = 100
+                    range = 0f..200f,
+                    steps = 200
                 )
             }
             CenteredSettingsSlider(

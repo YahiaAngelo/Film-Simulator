@@ -25,15 +25,15 @@ internal object ImageProcessingShader {
         uniform shader image;
         uniform shader lut;
         uniform float useLut;        // 0 = bypass LUT, 1 = apply
-        uniform float lutIntensity;  // 0..1 mix between source and LUT-processed
+        uniform float lutIntensity;  // 0..2 mix between source and LUT-processed; >1 extrapolates past the LUT
         uniform float lutSize;       // e.g. 33 for a 33^3 LUT
         uniform float2 imageScale;   // (srcW/outW, srcH/outH)
         uniform float2 resolution;   // output dimensions in pixels
 
         // Tonal — all pre-normalized by the caller.
         uniform float exposure;      // stops; ~[-2, 2]
-        uniform float contrast;      // multiplier offset; ~[-1, 1] (negative = flatter)
-        uniform float shadows;       // lifts (positive) / crushes (negative) shadow tones; ~[-0.25, 0.25]
+        uniform float contrast;      // multiplier offset; ~[-0.5, 0.5] (negative = flatter)
+        uniform float shadows;       // lifts (positive) / crushes (negative) shadow tones; ~[-0.125, 0.125]
         uniform float highlights;    // boosts (positive) / pulls down (negative) highlights; ~[-0.5, 0.5]
         uniform float saturation;    // ~[-1, 1]
         uniform float temperature;   // ~[-1, 1] (warm positive, cool negative)
@@ -146,8 +146,10 @@ internal object ImageProcessingShader {
                 alpha = raw.a;
             }
 
-            // Move to linear light for tonal ops.
-            half3 lin = srgbToLinear(color);
+            // Move to linear light for tonal ops. Clamp first: lutIntensity > 1
+            // extrapolates past the LUT and can push channels outside [0,1],
+            // which would feed pow() in srgbToLinear undefined inputs.
+            half3 lin = srgbToLinear(clamp(color, half3(0.0), half3(1.0)));
 
             // Exposure: stops (2^exposure multiplier in linear light).
             if (exposure != 0.0) {
