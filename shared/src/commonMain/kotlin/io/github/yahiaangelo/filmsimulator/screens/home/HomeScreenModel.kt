@@ -72,6 +72,13 @@ data class HomeUiState(
     val selectedFilm: FilmLut? = null,
     val isLoading: Boolean = false,
     val loadingMessage: String = "",
+    /**
+     * 0..1 progress for the loading dialog. When null, the dialog falls back
+     * to its indeterminate spinner; when set, it renders a linear progress
+     * bar driven by this value. Only the export path populates this — other
+     * loading states (refresh, LUT load) leave it null.
+     */
+    val loadingProgress: Float? = null,
     val showBottomSheet: BottomSheetState = BottomSheetState.HIDDEN,
     val defaultPickerType: DefaultPickerType = DefaultPickerType.IMAGES,
     val filmLuts: List<FilmLut> = emptyList(),
@@ -379,6 +386,7 @@ data class HomeScreenModel(
                     it.copy(
                         isLoading = true,
                         loadingMessage = "Processing image with effects...",
+                        loadingProgress = 0f,
                     )
                 }
 
@@ -389,13 +397,22 @@ data class HomeScreenModel(
                     maxDimension = null,
                     quality = settingsRepository.getSettings().exportQuality,
                     grainSeed = (kotlin.random.Random.nextFloat() * 1000f),
+                    highQualityGrain = true,
+                    onProgress = { p ->
+                        updateUiState { it.copy(loadingProgress = p) }
+                    },
                 ) ?: throw IllegalStateException("Failed to process image")
 
                 withContext(Dispatchers.IO) {
                     saveImageFile(EDITED_IMAGE_FILE_NAME, exportedBytes)
                 }
 
-                updateUiState { it.copy(loadingMessage = "Saving to gallery...") }
+                // Switch back to indeterminate spinner for the gallery save —
+                // PhotoKit/MediaStore don't expose progress, so a fake bar
+                // there would be misleading.
+                updateUiState {
+                    it.copy(loadingMessage = "Saving to gallery...", loadingProgress = null)
+                }
                 saveImageToGallery(
                     image = EDITED_IMAGE_FILE_NAME,
                     appContext = AppContext,
@@ -407,7 +424,7 @@ data class HomeScreenModel(
             } catch (e: Exception) {
                 updateUiState { it.copy(userMessage = "Error exporting image: ${e.message}") }
             } finally {
-                updateUiState { it.copy(isLoading = false) }
+                updateUiState { it.copy(isLoading = false, loadingProgress = null) }
             }
         }
     }

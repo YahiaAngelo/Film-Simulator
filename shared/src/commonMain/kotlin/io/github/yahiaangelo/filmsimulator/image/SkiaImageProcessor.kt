@@ -3,6 +3,7 @@ package io.github.yahiaangelo.filmsimulator.image
 import io.github.yahiaangelo.filmsimulator.image.shaders.ImageProcessingShader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.yield
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorType
 import org.jetbrains.skia.EncodedImageFormat
@@ -16,6 +17,8 @@ import org.jetbrains.skia.RuntimeShaderBuilder
 import org.jetbrains.skia.SamplingMode
 import org.jetbrains.skia.Surface
 import kotlin.math.max
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 private const val DEFAULT_PREVIEW_MAX_DIMENSION = 960
 private const val LEGACY_THUMBNAIL_WIDTH = 320
@@ -56,6 +59,17 @@ class SkiaImageProcessor {
      * @param quality JPEG quality 0..100 for the encoded result.
      * @param grainSeed value mixed into the per-pixel grain hash so successive
      *   previews can stay stable while exports can pick a fresh pattern.
+     * @param highQualityGrain when true, the shader switches the grain block
+     *   to a film-emulation path (multi-octave FBM with per-channel cell
+     *   sizes, density-weighted soft-light blend). ~30-40x more expensive than
+     *   the cheap path, so enable for export only — preview should leave it
+     *   false to keep slider interaction smooth.
+     * @param onProgress when non-null, the render is split into tiles and this
+     *   callback is invoked with a 0..1 progress value after each tile. Each
+     *   tile also yields the worker coroutine so the main thread can render
+     *   the loading dialog's progress bar smoothly. Pass null to do a single
+     *   draw call (used for preview/thumbnail paths where a progress bar
+     *   would be overkill).
      */
     suspend fun process(
         imageBytes: ByteArray,
@@ -64,6 +78,8 @@ class SkiaImageProcessor {
         maxDimension: Int? = null,
         quality: Int = 95,
         grainSeed: Float = 0f,
+        highQualityGrain: Boolean = false,
+        onProgress: (suspend (Float) -> Unit)? = null,
     ): ByteArray? = withContext(Dispatchers.Default) {
         val source = sourceImage(imageBytes) ?: return@withContext null
         val lut = lutBytes?.let { bytes ->
@@ -96,6 +112,7 @@ class SkiaImageProcessor {
             uniform("temperature", (adjustments.temperature / 20f).coerceIn(-1f, 1f))
             uniform("grain", (adjustments.grain / 10f).coerceIn(0f, 1f))
             uniform("grainSeed", grainSeed)
+            uniform("grainQuality", if (highQualityGrain) 1f else 0f)
             uniform("chromaticAberration", (adjustments.chromaticAberration / 10f).coerceIn(0f, 1f))
 
             child(
@@ -124,7 +141,42 @@ class SkiaImageProcessor {
         val info = ImageInfo(outWidth, outHeight, ColorType.RGBA_8888, ColorAlphaType.PREMUL)
         val surface = Surface.makeRaster(info)
         val paint = Paint().apply { shader = builder.makeShader() }
-        surface.canvas.drawRect(Rect(0f, 0f, outWidth.toFloat(), outHeight.toFloat()), paint)
+
+        if (onProgress == null) {
+            surface.canvas.drawRect(Rect(0f, 0f, outWidth.toFloat(), outHeight.toFloat()), paint)
+        } else {
+            // Tile the render so the worker can yield between tiles. The shader
+            // is per-pixel (it uses fragCoord directly), so drawing a clipped
+            // rect produces the same pixels as one big draw — Skia handles the
+            // raster bucketing internally. We aim for ~32 tiles total which
+            // gives a smooth progress bar without too much per-tile overhead.
+            val targetTiles = 32
+            val aspect = outWidth.toFloat() / outHeight.toFloat()
+            val tilesX = max(1, sqrt(targetTiles * aspect).roundToInt())
+            val tilesY = max(1, (targetTiles.toFloat() / tilesX).roundToInt())
+            val tileW = (outWidth + tilesX - 1) / tilesX
+            val tileH = (outHeight + tilesY - 1) / tilesY
+            val total = (tilesX * tilesY).toFloat()
+            var done = 0
+            for (ty in 0 until tilesY) {
+                for (tx in 0 until tilesX) {
+                    val left = tx * tileW
+                    val top = ty * tileH
+                    val right = minOf(left + tileW, outWidth)
+                    val bottom = minOf(top + tileH, outHeight)
+                    surface.canvas.drawRect(
+                        Rect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat()),
+                        paint,
+                    )
+                    done++
+                    onProgress(done / total)
+                    // yield() lets the dispatcher schedule other coroutines —
+                    // crucially, the ones forwarding UI state changes — so the
+                    // progress bar can actually animate while we render.
+                    yield()
+                }
+            }
+        }
 
         val snapshot = surface.makeImageSnapshot()
         snapshot.encodeToData(EncodedImageFormat.JPEG, quality)?.bytes

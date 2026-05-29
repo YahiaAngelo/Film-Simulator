@@ -39,6 +39,7 @@ internal object ImageProcessingShader {
         uniform float temperature;   // ~[-1, 1] (warm positive, cool negative)
         uniform float grain;         // 0..1 amplitude
         uniform float grainSeed;     // changes per export to vary noise pattern
+        uniform float grainQuality;  // 0 = cheap per-pixel hash (preview), 1 = film-emulation (export)
         uniform float chromaticAberration; // 0..1 normalized strength
 
         // ---- sRGB <-> linear ----
@@ -109,6 +110,43 @@ internal object ImageProcessingShader {
             float3 p3 = fract(float3(p.x, p.y, p.x) * 0.1031);
             p3 += dot(p3, p3.yzx + 33.33);
             return fract((p3.x + p3.y) * p3.z);
+        }
+
+        // Value noise: hash the 4 integer corners around p and smoothstep-interpolate.
+        // Output is band-limited to one cell width, which is what gives film grain
+        // its "size" — independent per-pixel hashes (the cheap path) live at the
+        // pixel Nyquist and read as digital noise, while value noise sampled at
+        // multi-pixel cell sizes reads as grain particles.
+        float vnoise(float2 p) {
+            float2 i = floor(p);
+            float2 f = fract(p);
+            float a = hash12(i);
+            float b = hash12(i + float2(1.0, 0.0));
+            float c = hash12(i + float2(0.0, 1.0));
+            float d = hash12(i + float2(1.0, 1.0));
+            float2 u = f * f * (3.0 - 2.0 * f);
+            return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+        }
+
+        // Fractal value noise — three octaves manually unrolled (SkSL loops have
+        // had compatibility quirks; unrolling is safe and the inner cost is tiny).
+        // Lacunarity 2.03 (not 2.0) breaks axis-aligned banding from doubling.
+        float fbm(float2 p) {
+            float v = 0.5     * vnoise(p);
+            p *= 2.03;
+            v +=     0.25    * vnoise(p);
+            p *= 2.03;
+            v +=     0.125   * vnoise(p);
+            return v / 0.875;  // re-normalize back to ~[0, 1]
+        }
+
+        // Pegtop soft-light blend — branch-free, photographic feel. When blend
+        // equals 0.5 the base is returned unchanged; departures from 0.5 lift or
+        // crush the base in a way that matches how density-on-negative behaves
+        // when projected, instead of the linear-add behaviour of the cheap path.
+        half3 softLight(half3 base, half3 blend) {
+            return (half3(1.0) - half3(2.0) * blend) * base * base
+                 + half3(2.0) * blend * base;
         }
 
         // Sample the source LUT-applied color at a normalized offset for CA.
@@ -201,27 +239,83 @@ internal object ImageProcessingShader {
                 srgb.b = clamp(srgb.b - half(temperature * 0.08), half(0.0), half(1.0));
             }
 
-            // Grain: sharp per-pixel hash, one tap per channel. Channels use
-            // large, mutually irrational offsets so the noise is completely
-            // decorrelated and reads as chromatic silver-halide grain instead of
-            // a luminance overlay. grainSeed shifts the entire field between
-            // renders. Coordinate is in output-pixel space so the noise is at the
-            // finest possible scale the render target can resolve — that
-            // high-frequency look is what reads as "random film grain" rather
-            // than the structured shimmer of interpolated noise.
+            // Grain. Two paths, selected by grainQuality (uniform branch — the
+            // shader takes one or the other for the whole render, no per-pixel
+            // branching).
+            //
+            // grainQuality == 0 (preview): cheap per-pixel hash, one tap per
+            // channel. Lives at the pixel Nyquist so it reads as digital noise
+            // when scrutinised, but it's a few ALU ops per pixel and runs fast
+            // on the slider drag.
+            //
+            // grainQuality == 1 (export): film-emulation stack. Per-channel
+            // FBM at different cell sizes (B largest, R smallest — matches
+            // real emulsion layer crystal sizes), density-weighted with a
+            // sqrt(L*(1-L)) curve biased toward mid-shadows (where film grain
+            // is actually most visible), then soft-light blended into the image
+            // so grain modulates density rather than adding to pixel values.
+            // ~30-40x the cost of the cheap path but only runs on export.
             if (grain > 0.0) {
-                float2 gp = fragCoord + float2(grainSeed * 137.7, grainSeed * 311.3);
-                float nR = hash12(gp + float2(  17.31,   91.07));
-                float nG = hash12(gp + float2(1313.71,  717.13));
-                float nB = hash12(gp + float2(2731.37, 4297.53));
-                half3 noise = half3(half(nR), half(nG), half(nB)) - half3(0.5);
+                if (grainQuality > 0.5) {
+                    // Cell sizes scale with grain (which is 0..1 from the slider):
+                    // at full strength the green-layer cell is ~3 px, which on a
+                    // 24 MP export reads as a coarse 35 mm-ISO-800-ish texture.
+                    float sizeG = mix(1.0, 3.0, grain);
+                    float sizeR = sizeG * 0.85;
+                    float sizeB = sizeG * 1.35;
 
-                half luma2 = dot(srgb, half3(0.2126, 0.7152, 0.0722));
-                half midtone = half(1.0) - abs(luma2 - half(0.5)) * half(1.4);
-                midtone = max(midtone, half(0.35));
+                    float2 seed = float2(grainSeed * 137.7, grainSeed * 311.3);
+                    float nR = fbm((fragCoord + seed + float2( 17.31,  91.07)) / sizeR);
+                    float nG = fbm((fragCoord + seed + float2(313.71, 717.13)) / sizeG);
+                    float nB = fbm((fragCoord + seed + float2(547.91, 991.37)) / sizeB);
 
-                srgb += noise * half(grain) * midtone;
-                srgb = clamp(srgb, half3(0.0), half3(1.0));
+                    // Mostly luma grain with a small chroma offset — pure
+                    // per-channel decorrelation produces rainbow speckle that
+                    // real film never does. 0.25 chroma keeps a hint of
+                    // emulsion-layer dye-cloud colour without going RGB-noisy.
+                    half nLuma = (half(nR) + half(nG) + half(nB)) / half(3.0);
+                    half3 nChan = half3(half(nR), half(nG), half(nB));
+                    half3 noise = mix(half3(nLuma), nChan, half(0.25)) - half3(0.5);
+
+                    // Yule-Nielsen-ish density curve: sqrt(L*(1-L)) peaks at
+                    // L=0.5 and rolls off cleanly toward both ends, then a
+                    // smoothstep tilt biases the peak toward mid-shadows where
+                    // emulsion grain is genuinely most visible. Floor at 0.25
+                    // so deep blacks and bright highlights still carry some
+                    // grain instead of going perfectly clean.
+                    half L = clamp(
+                        dot(srgb, half3(0.2126, 0.7152, 0.0722)),
+                        half(0.0),
+                        half(1.0)
+                    );
+                    half w = sqrt(max(L * (half(1.0) - L), half(0.0))) * half(2.0);
+                    w *= mix(half(1.2), half(0.7), smoothstep(half(0.5), half(0.95), L));
+                    w  = mix(half(0.25), half(1.0), w);
+
+                    // Additive blend with the density weight. Soft-light was
+                    // visually nicer but its non-linear curve asymptotes toward
+                    // neutral at high amplitudes, so even at slider=10 the
+                    // grain felt like ~2 on the cheap preview path. Additive
+                    // here gives us the same amplitude scaling as the preview
+                    // (noise * grain * weight) so the export now reads as the
+                    // intended slider strength — and the FBM, per-channel
+                    // sizes, and density curve still carry the "film" feel.
+                    srgb += noise * half(grain) * w;
+                    srgb = clamp(srgb, half3(0.0), half3(1.0));
+                } else {
+                    float2 gp = fragCoord + float2(grainSeed * 137.7, grainSeed * 311.3);
+                    float nR = hash12(gp + float2(  17.31,   91.07));
+                    float nG = hash12(gp + float2(1313.71,  717.13));
+                    float nB = hash12(gp + float2(2731.37, 4297.53));
+                    half3 noise = half3(half(nR), half(nG), half(nB)) - half3(0.5);
+
+                    half luma2 = dot(srgb, half3(0.2126, 0.7152, 0.0722));
+                    half midtone = half(1.0) - abs(luma2 - half(0.5)) * half(1.4);
+                    midtone = max(midtone, half(0.35));
+
+                    srgb += noise * half(grain) * midtone;
+                    srgb = clamp(srgb, half3(0.0), half3(1.0));
+                }
             }
 
             return half4(srgb, alpha);

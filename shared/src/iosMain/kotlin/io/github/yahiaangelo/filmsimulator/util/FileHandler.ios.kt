@@ -20,6 +20,7 @@ import platform.CoreFoundation.CFDictionarySetValue
 import platform.CoreFoundation.CFMutableDictionaryRef
 import platform.CoreFoundation.CFNumberCreate
 import platform.CoreFoundation.CFRelease
+import platform.CoreFoundation.CFStringRef
 import platform.CoreFoundation.CFURLRef
 import platform.CoreFoundation.kCFNumberIntType
 import platform.Foundation.CFBridgingRetain
@@ -46,6 +47,17 @@ import platform.Photos.PHPhotoLibrary
 import kotlin.coroutines.resume
 
 private const val ALBUM_TITLE = "Film Simulator"
+
+// File extensions for camera RAW formats. ImageIO can read most of these but
+// generally can't write them, and even where it can, re-encoding processed
+// sRGB pixels as RAW is meaningless — the RAW container is for unprocessed
+// sensor data. For these inputs the export is downgraded to JPEG while still
+// carrying the original EXIF/GPS/TIFF dictionary so capture metadata survives.
+private val RAW_EXTENSIONS = setOf(
+    "dng", "raw", "nef", "cr2", "cr3", "arw", "rw2", "raf", "orf", "pef", "srw", "x3f",
+)
+
+private const val JPEG_UTI = "public.jpeg"
 
 actual val systemTemporaryPath = FileSystem.SYSTEM_TEMPORARY_DIRECTORY
 actual fun saveImageFile(fileName: String, image: ByteArray) {
@@ -131,6 +143,7 @@ private suspend fun saveImageWithOriginalFormatAndMetadata(
 
     var destinationTmpPath: String? = null
     var mergedProps: CFMutableDictionaryRef? = null
+    var ownedDestUti: CFStringRef? = null
 
     try {
         val originalSource = CGImageSourceCreateWithURL(originalCfUrl, null)
@@ -153,16 +166,33 @@ private suspend fun saveImageWithOriginalFormatAndMetadata(
             CFRelease(orientationNum)
         }
 
-        val ext = extensionForExtension(
-            originalImageFile.substringAfterLast('.', "jpg").lowercase()
-        )
+        // For RAW sources we downgrade the container to JPEG (sourceUti would
+        // be e.g. com.adobe.dng, which CGImageDestination can't write — and
+        // wouldn't be meaningful anyway since we have processed sRGB pixels).
+        // mergedProps still carries the original EXIF dictionary, which ImageIO
+        // happily writes into the JPEG APP1 segment.
+        val srcExt = originalImageFile.substringAfterLast('.', "jpg").lowercase()
+        val isRaw = srcExt in RAW_EXTENSIONS
+        val ext = if (isRaw) "jpg" else extensionForExtension(srcExt)
+        val destUti: CFStringRef = if (isRaw) {
+            // CFBridgingRetain returns +1 — track in ownedDestUti so the
+            // outer finally releases it. sourceUti is borrowed, no release.
+            // K/N implicitly bridges Kotlin String to NSString at the call site.
+            val owned = CFBridgingRetain(JPEG_UTI) as CFStringRef?
+                ?: return@withContext false
+            ownedDestUti = owned
+            owned
+        } else {
+            sourceUti
+        }
+
         val tmpPath = NSTemporaryDirectory() + "export-${NSUUID().UUIDString}.$ext"
         destinationTmpPath = tmpPath
         val tmpUrl = NSURL.fileURLWithPath(tmpPath)
         val tmpCfUrl = CFBridgingRetain(tmpUrl) as CFURLRef? ?: return@withContext false
 
         val ok = try {
-            val destination = CGImageDestinationCreateWithURL(tmpCfUrl, sourceUti, 1u, null)
+            val destination = CGImageDestinationCreateWithURL(tmpCfUrl, destUti, 1u, null)
                 ?: return@withContext false
             CGImageDestinationAddImageFromSource(destination, processedSource, 0u, mergedProps)
             CGImageDestinationFinalize(destination)
@@ -199,6 +229,7 @@ private suspend fun saveImageWithOriginalFormatAndMetadata(
         CFRelease(originalCfUrl)
         CFRelease(processedCfUrl)
         if (mergedProps != null) CFRelease(mergedProps)
+        if (ownedDestUti != null) CFRelease(ownedDestUti)
         destinationTmpPath?.let { runCatching { FileSystem.SYSTEM.delete(it.toPath()) } }
     }
 }
