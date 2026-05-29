@@ -39,10 +39,6 @@ jobs:
       - name: Gradle setup
         uses: ./.github/actions/gradle-setup
 
-      - name: Install pods
-        working-directory: iosApp
-        run: pod install
-
       - name: Build iOS simulator app
         run: |
           xcodebuild build \
