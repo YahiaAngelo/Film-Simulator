@@ -14,7 +14,11 @@ data class ImageAdjustments(
     val exposure: Float = 0f,
     val grain: Float = 0f,
     val chromaticAberration: Float = 0f,
-    /** LUT mix amount in 0..100 (percent). 100 = full LUT, 0 = pure source. */
+    /**
+     * LUT mix amount in 0..200 (percent). 0 = pure source, 100 = full LUT,
+     * values above 100 extrapolate past the LUT result to amplify subtle film
+     * stocks. The mix is clamped back into displayable range in the shader.
+     */
     val lutIntensity: Float = 100f,
 ) {
 

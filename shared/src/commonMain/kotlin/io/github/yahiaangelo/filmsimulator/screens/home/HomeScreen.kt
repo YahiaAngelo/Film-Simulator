@@ -172,6 +172,7 @@ data class HomeScreen(
             selectedFilm = uiState.selectedFilm,
             isLoading = uiState.isLoading,
             loadingMessage = uiState.loadingMessage,
+            loadingProgress = uiState.loadingProgress,
             showBottomSheet = uiState.showBottomSheet,
             filmLuts = uiState.filmLuts,
             favoriteLuts = uiState.favoriteLuts,
@@ -250,7 +251,10 @@ data class HomeScreen(
         }
 
         if (homeScreenState.isLoading) {
-            ProgressDialog(loadingMessage = homeScreenState.loadingMessage)
+            ProgressDialog(
+                loadingMessage = homeScreenState.loadingMessage,
+                progress = homeScreenState.loadingProgress,
+            )
         }
     }
 
@@ -349,8 +353,8 @@ data class HomeScreen(
                     name = "LUT Intensity",
                     value = state.imageAdjustments.lutIntensity,
                     onValueChange = state.onLutIntensityChange,
-                    range = 0f..100f,
-                    steps = 100
+                    range = 0f..200f,
+                    steps = 200
                 )
             }
             CenteredSettingsSlider(
